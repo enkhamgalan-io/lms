@@ -21,6 +21,12 @@
 				:aria-label="__('Filter by role')"
 				:options="roleOptions()"
 			/>
+			<Select
+				v-model="status"
+				class="w-32"
+				:aria-label="__('Filter by status')"
+				:options="statusOptions()"
+			/>
 		</template>
 	</SettingsList>
 
@@ -29,7 +35,7 @@
 
 <script setup lang="ts">
 import { Select } from 'frappe-ui'
-import { ref, watch } from 'vue'
+import { inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MemberForm from '@/components/Settings/Members/MemberForm.vue'
 import SettingsList from '@/components/Layouts/settings/desktop/SettingsList.vue'
@@ -39,11 +45,13 @@ import {
 	confirmMemberDeletion,
 	memberColumns,
 	roleOptions,
+	setMemberEnabled,
+	statusOptions,
 } from '@/components/Settings/Members/members'
 import { useSettingsMethodResource } from '@/composables/useSettingsListResource'
 import { NEW_RECORD } from '@/composables/useSettingsSource'
 import { membersRevision } from '@/stores/members'
-import type { SettingsListRow } from '@/types'
+import type { SessionUser, SettingsListRow } from '@/types'
 
 // Settings > Users: the list of members, with the form behind New and
 // behind a row in MemberForm.vue. Three files per list page (config, list,
@@ -58,7 +66,10 @@ const router = useRouter()
 // land on it. A second copy could disagree with the URL; a derived one can't.
 const record = defineModel<string | null>('record', { default: null })
 
+const user = inject<SessionUser>('$user')!
+
 const role = ref('All')
+const status = ref('Active')
 
 // The row behind the open record, so the header can name the person before
 // their document has landed. Null on a deep link, which the form allows for.
@@ -67,12 +78,12 @@ const selectedRow = ref<SettingsListRow | null>(null)
 const list = useSettingsMethodResource<SettingsListRow>({
 	method: MEMBERS_METHOD,
 	doctype: MEMBERS_DOCTYPE,
-	params: () => ({ role: role.value }),
+	params: () => ({ role: role.value, status: status.value }),
 })
 
 // The role goes to the server, so what is on screen was fetched under the old
 // one and none of it can be kept.
-watch(role, () => list.reload())
+watch([role, status], () => list.reload())
 
 // A member saved anywhere else, the phone's form route among them,
 // announces itself through the store.
@@ -88,6 +99,9 @@ const openProfile = (row: SettingsListRow) => {
 const columns = memberColumns({
 	profile: openProfile,
 	remove: (row) => confirmMemberDeletion(row, () => list.reload()),
+	setEnabled: (row, enabled) =>
+		setMemberEnabled(row, enabled, () => list.reload()),
+	canDelete: Boolean(user.data?.is_moderator),
 })
 
 const openForm = (row: SettingsListRow | null) => {

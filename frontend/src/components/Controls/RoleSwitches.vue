@@ -1,6 +1,6 @@
 <template>
 	<div class="grid grid-cols-1 gap-5 sm:grid-cols-1 md:grid-cols-2">
-		<div v-for="row in ROLE_ROWS" :key="row.key" data-testid="role-row">
+		<div v-for="row in rows" :key="row.key" data-testid="role-row">
 			<BooleanSwitch
 				size="sm"
 				:label="row.label()"
@@ -25,7 +25,14 @@ import {
 	type MemberRoles,
 } from '@/components/Settings/Members/members'
 
-defineProps<{ modelValue: MemberRoles }>()
+withDefaults(
+	defineProps<{
+		modelValue: MemberRoles
+		/** The roles this user may grant; the rest are not drawn. */
+		rows?: readonly typeof ROLE_ROWS[number][]
+	}>(),
+	{ rows: () => ROLE_ROWS }
+)
 
 const emit = defineEmits<{
 	toggle: [key: MemberRoleKey, value: boolean]

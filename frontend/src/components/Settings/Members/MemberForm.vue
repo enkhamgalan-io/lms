@@ -73,6 +73,25 @@
 					:placeholder="__('London')"
 					autocomplete="off"
 				/>
+				<Link
+					v-model="member.organization"
+					doctype="LMS Organization"
+					:label="__('Organization')"
+					:required="!user.data?.is_moderator"
+				/>
+				<FormControl
+					v-model="member.designation"
+					:label="__('Designation')"
+					type="text"
+					:placeholder="__('Senior Officer')"
+					autocomplete="off"
+				/>
+				<FormControl
+					v-model="member.rank"
+					:label="__('Rank')"
+					type="text"
+					autocomplete="off"
+				/>
 			</div>
 
 			<FormControl
@@ -90,6 +109,7 @@
 
 			<RoleSwitches
 				:model-value="roles"
+				:rows="grantableRoleRows(user.data)"
 				@toggle="(key, value) => (roles[key] = value)"
 			/>
 		</div>
@@ -102,11 +122,14 @@ import { computed, inject, reactive, ref, watch } from 'vue'
 import { useOnboarding } from '@framework/ui/components/Onboarding/index'
 import { seesOnboarding } from '@/utils/onboarding'
 import { useTelemetry } from '@framework/ui/telemetry/index'
+import Link from '@/components/Controls/Link.vue'
 import RoleSwitches from '@/components/Controls/RoleSwitches.vue'
 import SettingsLayout from '@/components/Layouts/settings/desktop/SettingsLayout.vue'
 import {
 	MEMBERS_DOCTYPE,
 	ROLE_ROWS,
+	canManageMembers,
+	grantableRoleRows,
 	memberError,
 	noRoles,
 	rolesFrom,
@@ -150,13 +173,12 @@ const formTitle = computed(() => {
 })
 
 // The settings surface is gated already (UserDropdown.vue), but this form is
-// one click away from a list a deep link opens. `is_moderator` alone,
-// deliberately: get_members and save_role both `frappe.only_for("Moderator")`.
-// This is a UX gate, not the authorization boundary; those only_for calls are.
+// one click away from a list a deep link opens. This is a UX gate, not the
+// authorization boundary; check_members_access in the members API is.
 const refusal = computed(() => {
 	if ((window as Window & { read_only_mode?: boolean }).read_only_mode)
 		return __('This site is in read-only mode.')
-	if (!user.data?.is_moderator)
+	if (!canManageMembers(user.data))
 		return __('You are not permitted to manage members.')
 	return ''
 })
@@ -206,6 +228,9 @@ const validate = (): string => {
 	if (!isEdit.value && !String(doc.email ?? '').trim())
 		return __('Email is required')
 	if (!String(doc.first_name ?? '').trim()) return __('First Name is required')
+	// The server places an Organization Manager's members inside their organizations.
+	if (!user.data?.is_moderator && !doc.organization)
+		return __('Organization is required')
 	return ''
 }
 
@@ -232,6 +257,9 @@ const PROFILE_FIELDS = [
 	'mobile_no',
 	'location',
 	'bio',
+	'organization',
+	'designation',
+	'rank',
 ] as const
 
 const profileOf = (doc: SettingsListRow) =>

@@ -252,6 +252,32 @@
 			"insert_after": "college",
 			"label": "Branch",
 			"translatable": 1
+		},
+		{
+			"fieldname": "organization_details",
+			"fieldtype": "Section Break",
+			"insert_after": "branch",
+			"label": "Organization"
+		},
+		{
+			"fieldname": "organization",
+			"fieldtype": "Link",
+			"insert_after": "organization_details",
+			"label": "Organization",
+			"options": "LMS Organization",
+			"search_index": 1
+		},
+		{
+			"fieldname": "designation",
+			"fieldtype": "Data",
+			"insert_after": "organization",
+			"label": "Designation"
+		},
+		{
+			"fieldname": "rank",
+			"fieldtype": "Data",
+			"insert_after": "designation",
+			"label": "Rank"
 		}
 	],
 	"Communication": [

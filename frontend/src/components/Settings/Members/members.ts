@@ -75,6 +75,26 @@ export const ROLE_ROWS = [
 
 export type MemberRoleKey = typeof ROLE_ROWS[number]['key']
 
+type MemberManager = {
+	is_moderator?: boolean
+	is_organization_manager?: boolean
+}
+
+/** Moderators manage every member; an Organization Manager, the people of their organizations. */
+export const canManageMembers = (user: MemberManager | undefined): boolean =>
+	Boolean(user?.is_moderator || user?.is_organization_manager)
+
+/** Staff roles reach past an organization, so save_role lets only a Moderator grant them. */
+export const grantableRoleRows = (user: MemberManager | undefined) =>
+	user?.is_moderator
+		? ROLE_ROWS
+		: ROLE_ROWS.filter((row) => row.key === 'lms_student')
+
+export const statusOptions = (): SelectOption[] => [
+	{ label: __('Active'), value: 'Active' },
+	{ label: __('Disabled'), value: 'Disabled' },
+]
+
 export type MemberRoles = Record<MemberRoleKey, boolean>
 
 export const noRoles = (): MemberRoles => ({
@@ -96,6 +116,9 @@ export interface MemberRowActions {
 	/** The member's own page, which is not a settings page. */
 	profile: (row: SettingsListRow) => void
 	remove: (row: SettingsListRow) => void
+	setEnabled: (row: SettingsListRow, enabled: boolean) => void
+	/** Deleting is a Moderator's; an Organization Manager disables instead. */
+	canDelete: boolean
 }
 
 export const memberColumns = (
@@ -108,6 +131,13 @@ export const memberColumns = (
 		primary: (row) => row.full_name,
 		secondary: (row) => row.name,
 		avatar: (row) => ({ image: row.user_image, label: row.full_name }),
+	},
+	{
+		key: 'organization',
+		label: __('Organization'),
+		type: 'stacked',
+		primary: (row) => row.organization || '',
+		secondary: (row) => [row.designation, row.rank].filter(Boolean).join(' · '),
 	},
 	{
 		key: 'roles',
@@ -133,12 +163,27 @@ export const memberColumns = (
 				icon: 'lucide-user',
 				onClick: () => actions.profile(row),
 			},
-			{
-				label: __('Delete user'),
-				icon: 'lucide-trash-2',
-				theme: 'red',
-				onClick: () => actions.remove(row),
-			},
+			row.enabled
+				? {
+						label: __('Disable user'),
+						icon: 'lucide-user-x',
+						onClick: () => actions.setEnabled(row, false),
+				  }
+				: {
+						label: __('Enable user'),
+						icon: 'lucide-user-check',
+						onClick: () => actions.setEnabled(row, true),
+				  },
+			...(actions.canDelete
+				? [
+						{
+							label: __('Delete user'),
+							icon: 'lucide-trash-2',
+							theme: 'red' as const,
+							onClick: () => actions.remove(row),
+						},
+				  ]
+				: []),
 		],
 	},
 ]
@@ -164,6 +209,24 @@ const removeMember = (
 		})
 		.catch((error: FrappeResourceError) => {
 			toast.error(memberError(error, __('Unable to delete user')))
+			console.error(error)
+		})
+
+export const setMemberEnabled = (
+	row: SettingsListRow,
+	enabled: boolean,
+	onChanged: () => void
+) =>
+	call('lms.lms.api.set_member_enabled', {
+		member: row.name,
+		enabled: enabled ? 1 : 0,
+	})
+		.then(() => {
+			toast.success(enabled ? __('User enabled') : __('User disabled'))
+			onChanged()
+		})
+		.catch((error: FrappeResourceError) => {
+			toast.error(memberError(error, __('Unable to update user')))
 			console.error(error)
 		})
 
