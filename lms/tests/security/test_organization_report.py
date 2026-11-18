@@ -88,3 +88,46 @@ class TestOrganizationReport(BaseTestUtils):
 		frappe.set_user(self.outside)
 		with self.assertRaises(frappe.PermissionError):
 			get_organization_report()
+
+	def test_surveys_and_polls_stay_out_of_the_quiz_average(self):
+		frappe.set_user("Administrator")
+		hash = frappe.generate_hash(length=6)
+		graded = self._create_quiz(self._create_quiz_questions()[:1], title=f"Rep Graded {hash}").name
+		opinion = (
+			frappe.get_doc(
+				{
+					"doctype": "LMS Question",
+					"question": f"Rep opinion {hash}?",
+					"type": "Choices",
+					"option_1": "Yes",
+					"option_2": "No",
+					"no_correct_answer": 1,
+				}
+			)
+			.insert()
+			.name
+		)
+		survey = frappe.get_doc({"doctype": "LMS Quiz", "title": f"Rep Survey {hash}", "quiz_type": "Survey"})
+		survey.append("questions", {"question": opinion, "marks": 1})
+		survey = survey.insert().name
+		for quiz, percentage in ((graded, 80), (survey, 0)):
+			submission = frappe.get_doc(
+				{
+					"doctype": "LMS Quiz Submission",
+					"quiz": quiz,
+					"member": self.in_agency,
+					"course": self.course,
+					"passing_percentage": 50,
+				}
+			).insert(ignore_permissions=True)
+			frappe.db.set_value(
+				"LMS Quiz Submission", submission.name, {"percentage": percentage, "course": self.course}
+			)
+
+		frappe.set_user(self.hr)
+		row = next(
+			row
+			for row in get_organization_report(course=self.course)["rows"]
+			if row["member"] == self.in_agency
+		)
+		self.assertEqual(row["quiz_average"], 80)
