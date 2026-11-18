@@ -84,6 +84,7 @@ from lms.lms.utils import (
 	can_modify_batch,
 	can_modify_course,
 	check_filter_value,
+	enrollment_is_active,
 	format_timezone,
 	get_batch_details,
 	get_course_details,
@@ -3081,6 +3082,97 @@ def delete_member(user: str):
 	frappe.delete_doc("User", user, ignore_permissions=True)
 	frappe.clear_cache(user=user)
 	return True
+
+
+@frappe.whitelist()
+def get_organization_report(organization: str | None = None, course: str | None = None) -> dict:
+	"""One row per course enrollment of the people the caller manages: progress, quiz
+	average, certificate and access. `organization` narrows to one organization and those
+	under it; `course` to one course."""
+	from frappe.utils.nestedset import get_descendants_of
+
+	check_members_access()
+	for value in (organization, course):
+		if value is not None and not isinstance(value, str):
+			frappe.throw(_("Filters must be text."))
+
+	scope = None if manages_every_member() else managed_organizations()
+	if organization:
+		if scope is not None and organization not in scope:
+			frappe.throw(_("You do not manage {0}.").format(organization), frappe.PermissionError)
+		scope = [organization, *get_descendants_of("LMS Organization", organization, ignore_permissions=True)]
+
+	user_filters = {"enabled": 1, "organization": ["in", scope] if scope is not None else ["is", "set"]}
+	people = {
+		user.name: user
+		for user in frappe.get_all(
+			"User",
+			user_filters,
+			["name", "full_name", "organization", "designation", "rank"],
+			limit_page_length=0,
+		)
+	}
+	if not people:
+		return {"rows": [], "courses": []}
+
+	# shortcut: one unpaged read of every enrollment in scope; page it once an organization
+	# runs to tens of thousands of enrollments.
+	enrollment_filters = {"member": ["in", list(people)]}
+	if course:
+		enrollment_filters["course"] = course
+	enrollments = frappe.get_all(
+		"LMS Enrollment",
+		enrollment_filters,
+		["member", "course", "progress", "valid_until", "creation"],
+		order_by="creation desc",
+		limit_page_length=0,
+	)
+	courses = {row.course for row in enrollments}
+	titles = dict(
+		frappe.get_all("LMS Course", {"name": ["in", list(courses)]}, ["name", "title"], as_list=True)
+	)
+	key_filters = {"member": ["in", list(people)], "course": ["in", list(courses)]}
+	averages = {
+		(row.member, row.course): row.average
+		for row in frappe.get_all(
+			"LMS Quiz Submission",
+			key_filters,
+			["member", "course", {"AVG": "percentage", "as": "average"}],
+			group_by="member, course",
+		)
+	}
+	certificates = {
+		(row.member, row.course): row.name
+		for row in frappe.get_all("LMS Certificate", key_filters, ["name", "member", "course"])
+	}
+
+	rows = []
+	for row in enrollments:
+		person = people[row.member]
+		key = (row.member, row.course)
+		rows.append(
+			{
+				"member": row.member,
+				"full_name": person.full_name,
+				"organization": person.organization,
+				"designation": person.designation,
+				"rank": person.rank,
+				"course": row.course,
+				"course_title": titles.get(row.course, row.course),
+				"progress": flt(row.progress, 1),
+				"quiz_average": flt(averages[key], 1) if averages.get(key) is not None else None,
+				"certificate": certificates.get(key),
+				"enrolled_on": row.creation,
+				"valid_until": row.valid_until,
+				"access_expired": not enrollment_is_active(row.valid_until),
+			}
+		)
+	return {
+		"rows": rows,
+		"courses": sorted(
+			({"value": name, "label": titles.get(name, name)} for name in courses), key=lambda c: c["label"]
+		),
+	}
 
 
 @frappe.whitelist()
