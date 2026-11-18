@@ -285,6 +285,31 @@
 					<h2 class="text-lg font-semibold text-ink-gray-9">
 						{{ __('Settings') }}
 					</h2>
+					<FormControl
+						v-model="doc.quiz_type"
+						type="select"
+						:label="__('Type')"
+						:options="[
+							{ label: __('Quiz'), value: 'Quiz' },
+							{ label: __('Survey'), value: 'Survey' },
+							{ label: __('Poll'), value: 'Poll' },
+						]"
+						:description="
+							__(
+								'A survey or poll is not scored; taking it completes its lesson. A poll shows everyone\'s answers once submitted.'
+							)
+						"
+						variant="outline"
+					/>
+					<BooleanSwitch
+						v-if="doc.quiz_type && doc.quiz_type !== 'Quiz'"
+						v-model="doc.is_anonymous"
+						size="sm"
+						:label="__('Anonymous')"
+						:description="
+							__('Staff see the answers only added up, never who gave them.')
+						"
+					/>
 					<BooleanSwitch
 						v-model="doc.show_answers"
 						size="sm"

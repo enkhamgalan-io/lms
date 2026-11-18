@@ -8,6 +8,8 @@
  "engine": "InnoDB",
  "field_order": [
   "title",
+  "quiz_type",
+  "is_anonymous",
   "authors",
   "max_attempts",
   "show_answers",
@@ -43,6 +45,23 @@
    "in_list_view": 1,
    "label": "Title",
    "reqd": 1
+  },
+  {
+   "default": "Quiz",
+   "description": "A survey or poll collects opinions: it is not scored, and taking it is enough to complete its lesson. A poll shows everyone's answers once submitted.",
+   "fieldname": "quiz_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Quiz\nSurvey\nPoll"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.quiz_type != 'Quiz'",
+   "description": "Staff see the answers only added up, never who gave them.",
+   "fieldname": "is_anonymous",
+   "fieldtype": "Check",
+   "label": "Anonymous"
   },
   {
    "fieldname": "questions",
@@ -219,7 +238,7 @@
    "link_fieldname": "quiz"
   }
  ],
- "modified": "2026-11-18 03:10:52.552010",
+ "modified": "2026-11-18 00:00:04.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Quiz",

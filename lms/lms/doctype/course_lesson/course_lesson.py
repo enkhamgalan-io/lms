@@ -887,6 +887,9 @@ def get_quiz_progress(
 		if not get_valid_question_count(quiz):
 			continue
 		quiz_rule = open_ended_rule if is_open_ended_quiz(quiz) else rule
+		# A survey or poll is not scored: taking it is all it can ask.
+		if quiz_rule and frappe.db.get_value("LMS Quiz", quiz, "quiz_type") in ("Survey", "Poll"):
+			quiz_rule = "Attempted"
 		if quiz_rule and not quiz_meets_rule(quiz, member, quiz_rule):
 			return False
 	return True

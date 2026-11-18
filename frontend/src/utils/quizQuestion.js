@@ -188,8 +188,9 @@ export const countCorrectOptions = (question) =>
 
 // validate_correct_options re-derives `multiple` from this count, so one correct
 // answer saves a Multiple choice question as Single and the type changes under the
-// author on the next reload.
+// author on the next reload. A survey or poll question has no right answer at all.
 export const hasRequiredCorrectOptions = (question, uiType) =>
+	Boolean(question?.no_correct_answer) ||
 	countCorrectOptions(question) >= (uiType === 'multiple' ? 2 : 1)
 
 export const hasRequiredPossibilities = (question) =>

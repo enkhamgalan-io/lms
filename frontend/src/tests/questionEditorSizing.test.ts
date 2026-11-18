@@ -9,6 +9,10 @@ vi.mock('frappe-ui', () => ({
 	FormLabel: { template: '<label />' },
 }))
 
+vi.mock('@/components/Controls/BooleanSwitch.vue', () => ({
+	default: { render: () => null },
+}))
+
 vi.mock('@/components/RichTextEditor.vue', () => ({
 	default: {
 		name: 'RichTextEditorStub',
@@ -38,7 +42,7 @@ vi.stubGlobal('__', (s: string) => s)
 String.prototype.format = function (this: string, ...args: unknown[]): string {
 	return args.reduce<string>(
 		(out, arg, i) => out.replaceAll(`{${i}}`, String(arg)),
-		this
+		this,
 	)
 }
 
@@ -49,11 +53,10 @@ async function mountEditor(
 		question: 'Q?',
 		option_1: 'a',
 		option_2: 'b',
-	}
+	},
 ) {
-	const { default: QuestionEditor } = await import(
-		'@/components/Quiz/QuestionEditor.vue'
-	)
+	const { default: QuestionEditor } =
+		await import('@/components/Quiz/QuestionEditor.vue')
 	return mount(QuestionEditor, {
 		props: {
 			question,
@@ -84,7 +87,7 @@ describe('QuestionEditor field labelling', () => {
 		await wrapper.vm.$nextTick()
 		expect(editorOf(wrapper).props('ariaInvalid')).toBe(true)
 		expect(wrapper.find('.text-editor-stub').attributes('aria-invalid')).toBe(
-			'true'
+			'true',
 		)
 	})
 })

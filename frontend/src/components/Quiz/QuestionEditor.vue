@@ -104,6 +104,15 @@
 			:question="question"
 			:revealErrors="revealErrors"
 		/>
+		<BooleanSwitch
+			v-if="isChoice(uiType)"
+			v-model="question.no_correct_answer"
+			size="sm"
+			:label="__('No correct answer')"
+			:description="
+				__('For surveys and polls: every option is an opinion, none is right.')
+			"
+		/>
 	</div>
 </template>
 
@@ -112,7 +121,9 @@ import { Button, Badge, Dropdown, FormControl, FormLabel } from 'frappe-ui'
 import { ref, computed, nextTick } from 'vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import QuestionAnswers from './QuestionAnswers.vue'
+import BooleanSwitch from '@/components/Controls/BooleanSwitch.vue'
 import {
+	isChoice,
 	hasContent,
 	QUESTION_TYPES,
 	uiTypeMeta,

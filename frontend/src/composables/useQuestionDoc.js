@@ -42,6 +42,7 @@ export function useQuestionDoc({
 		question: '',
 		...toBackendType(seedUiType),
 		marks,
+		no_correct_answer: 0,
 		...blankOptionFields(),
 	})
 
