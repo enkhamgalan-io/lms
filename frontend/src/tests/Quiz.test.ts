@@ -56,6 +56,7 @@ vi.mock('frappe-ui', async () => {
 
 		resource = reactive({
 			auto: options.auto,
+			makeParams: options.makeParams,
 			data: null,
 			error: null,
 			loading: false,
@@ -332,6 +333,50 @@ const startQuiz = async (wrapper: VueWrapper<any>) => {
 	await start!.trigger('click')
 	await flushPromises()
 }
+// Guards the draw moving back into the page, where a learner could read the
+// questions and options a limited or shuffled quiz leaves out of their attempt.
+describe('Quiz attempt drawn by the server', () => {
+	it('shows the options in the order the server sent', async () => {
+		const response = choicesQuizResponse(1)
+		response.questions_by_name.Q1.option_order = [2, 1, 3, 4, 5, 6, 7, 8, 9, 10]
+		resourceState.response = response
+		const wrapper = mountQuiz()
+		await flushPromises()
+		await startQuiz(wrapper)
+
+		const labels = wrapper.findAll('label').map((label) => label.text())
+		expect(labels[0]).toContain('Second option 1')
+		expect(labels[1]).toContain('First option 1')
+		wrapper.unmount()
+	})
+
+	it('submits with the token of the window it was opened in', async () => {
+		const response = choicesQuizResponse(1)
+		Object.assign(response.quiz, {
+			single_session: 1,
+			attempt_token: 'TOKEN-1',
+		})
+		resourceState.response = response
+		const wrapper = mountQuiz()
+		await flushPromises()
+
+		const params = (wrapper.vm as any).quizSubmission.makeParams()
+		expect(params.attempt_token).toBe('TOKEN-1')
+		wrapper.unmount()
+	})
+
+	it('fetches a new draw for a retake', async () => {
+		resourceState.response = choicesQuizResponse(1)
+		const wrapper = mountQuiz()
+		await flushPromises()
+		expect(resourceState.request).toHaveBeenCalledTimes(1)
+		;(wrapper.vm as any).retakeQuiz()
+		await flushPromises()
+		expect(resourceState.request).toHaveBeenCalledTimes(2)
+		wrapper.unmount()
+	})
+})
+
 describe('Quiz in an author preview', () => {
 	beforeEach(() => {
 		resourceState.response = choicesQuizResponse(1)

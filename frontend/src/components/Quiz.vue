@@ -287,7 +287,10 @@
 							}}</Button>
 							<Button
 								variant="solid"
-								:disabled="!!quiz.data.enable_proctoring && !cameraReady"
+								:disabled="
+									quiz.loading ||
+									(!!quiz.data.enable_proctoring && !cameraReady)
+								"
 								@click="startQuiz"
 							>
 								{{ __('Start Quiz') }}
@@ -362,7 +365,10 @@
 								:aria-labelledby="questionTextId"
 								class="flex flex-col gap-1.5"
 							>
-								<template v-for="index in MAX_OPTIONS" :key="index">
+								<template
+									v-for="index in optionOrder(questionDetails.data)"
+									:key="index"
+								>
 									<template v-if="questionDetails.data[`option_${index}`]">
 										<OptionRow>
 											<template #control>
@@ -601,7 +607,7 @@
 							<Button
 								v-if="canRetake"
 								:variant="passed ? 'subtle' : 'solid'"
-								@click="resetQuiz()"
+								@click="retakeQuiz()"
 							>
 								{{ __('Try again') }}
 							</Button>
@@ -1053,6 +1059,9 @@ const sendSubmitBeacon = (reason: SubmissionReason): void => {
 			submission_reason: reason,
 		})
 		if (window.csrf_token) params.set('csrf_token', window.csrf_token)
+		if (quiz.data.attempt_token) {
+			params.set('attempt_token', quiz.data.attempt_token)
+		}
 		if (violationLog.value.length) {
 			params.set('violation_events', serialiseViolationLog(false))
 		}
@@ -1131,15 +1140,8 @@ const populateQuestions = () => {
 		(row: QuizQuestionRow) =>
 			row?.question && questionsByName.value[row.question]
 	)
-	if (data?.shuffle_questions) {
-		let next = shuffleArray([...resolvable])
-		if (data.limit_questions_to) {
-			next = next.slice(0, data.limit_questions_to)
-		}
-		questions.value = next
-	} else {
-		questions.value = resolvable
-	}
+	// The server has drawn, ordered and limited the rows for this attempt.
+	questions.value = resolvable
 }
 
 const setupTimer = () => {
@@ -1343,14 +1345,6 @@ watch(scheduleBlockReason, (reason, previous) => {
 	}
 })
 
-const shuffleArray = <T>(array: T[]): T[] => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1))
-		;[array[i], array[j]] = [array[j], array[i]]
-	}
-	return array
-}
-
 const attempts = createResource<QuizAttempt[]>({
 	url: 'frappe.client.get_list',
 	makeParams() {
@@ -1404,6 +1398,7 @@ const quizSubmission = createResource<QuizSubmissionResult>({
 			violation_count: values?.violation_count ?? violationCount.value,
 			submission_reason: values?.submission_reason ?? 'manual',
 			violation_events: serialiseViolationLog(),
+			attempt_token: quiz.data?.attempt_token,
 		}
 	},
 })
@@ -1660,6 +1655,13 @@ const handleWarning = (
 	})
 }
 
+const allOptions = Array.from({ length: MAX_OPTIONS }, (_, i) => i + 1)
+
+// Option numbers in the order this attempt shows them; the server sends one
+// when the quiz shuffles its options.
+const optionOrder = (details: QuizQuestionDetails): number[] =>
+	details.option_order?.length ? details.option_order : allOptions
+
 const markAnswer = (index: number): void => {
 	if (!questionDetails.data?.multiple)
 		selectedOptions.value.splice(
@@ -1887,6 +1889,12 @@ const resetQuiz = () => {
 	submissionReason.value = ''
 	populateQuestions()
 	setupTimer()
+}
+
+// The server draws each attempt afresh, so a retake needs the new draw.
+const retakeQuiz = (): void => {
+	resetQuiz()
+	quiz.reload()
 }
 
 const getInstructions = (question: QuizQuestionDetails): string => {

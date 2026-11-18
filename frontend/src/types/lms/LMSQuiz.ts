@@ -33,6 +33,10 @@ export interface LMSQuiz {
 	shuffle_questions?: 0 | 1
 	/**	Limit Questions To : Int	*/
 	limit_questions_to?: number
+	/**	Shuffle Options : Check	*/
+	shuffle_options?: 0 | 1
+	/**	Single Session : Check	*/
+	single_session?: 0 | 1
 	/**	Duration (in minutes) : Data	*/
 	duration?: string
 	/**	Enable Negative Marking : Check	*/

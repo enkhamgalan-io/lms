@@ -24,6 +24,8 @@
   "section_break_tzbu",
   "shuffle_questions",
   "limit_questions_to",
+  "shuffle_options",
+  "single_session",
   "column_break_clsh",
   "enable_negative_marking",
   "marks_to_cut",
@@ -130,6 +132,19 @@
    "label": "Limit Questions To"
   },
   {
+   "default": "0",
+   "fieldname": "shuffle_options",
+   "fieldtype": "Check",
+   "label": "Shuffle Options"
+  },
+  {
+   "default": "0",
+   "description": "A learner can take the quiz in one window at a time. Opening it again ends the earlier window's attempt.",
+   "fieldname": "single_session",
+   "fieldtype": "Check",
+   "label": "Single Session"
+  },
+  {
    "fieldname": "section_break_tzbu",
    "fieldtype": "Section Break"
   },
@@ -204,7 +219,7 @@
    "link_fieldname": "quiz"
   }
  ],
- "modified": "2026-09-08 02:30:00.000000",
+ "modified": "2026-11-18 03:10:52.552010",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Quiz",

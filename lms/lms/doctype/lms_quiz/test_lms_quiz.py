@@ -202,6 +202,10 @@ class TestCheckAnswerEmptyInput(unittest.TestCase):
 		access = patch("lms.lms.permissions.can_access_quiz", return_value=True)
 		access.start()
 		self.addCleanup(access.stop)
+		# The draw reads the quiz's rows, which get_value's stub above cannot answer.
+		drawn = patch("lms.lms.doctype.lms_quiz.lms_quiz._assert_drawn")
+		drawn.start()
+		self.addCleanup(drawn.stop)
 
 	def tearDown(self):
 		for name, fn in self._orig.items():
