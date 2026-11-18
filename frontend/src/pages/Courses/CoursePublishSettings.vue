@@ -22,6 +22,14 @@
 					:label="__('Self enrollment')"
 					:description="__('Let users enroll themselves.')"
 				/>
+				<MultiLink
+					v-model="organizations"
+					doctype="LMS Organization"
+					:label="__('Visible to organizations')"
+					:description="__('Leave empty to show this course to everyone.')"
+					:placeholder="__('Everyone')"
+					variant="outline"
+				/>
 				<BooleanSwitch
 					size="sm"
 					v-model="doc.enforce_lesson_completion"
@@ -203,6 +211,7 @@ import BooleanSwitch from '@/components/Controls/BooleanSwitch.vue'
 import { computed, inject, ref } from 'vue'
 import CollapsibleSection from '@/components/CollapsibleSection.vue'
 import Link from '@/components/Controls/Link.vue'
+import MultiLink from '@/components/Controls/MultiLink.vue'
 import NewMemberModal from '@/components/Modals/NewMemberModal.vue'
 import { useSettings } from '@/stores/settings'
 import type { CourseFormContext, Resource } from '@/types'
@@ -238,6 +247,21 @@ const selfEnrollment = computed<boolean>({
 	set: (val: boolean) => {
 		if (!resource.doc) return
 		resource.doc.disable_self_learning = val ? 0 : 1
+		markDirty()
+	},
+})
+
+// Child rows on the course, names in the picker.
+const organizations = computed<string[]>({
+	get: () =>
+		(resource.doc?.organizations ?? []).map(
+			(row: { organization: string }) => row.organization
+		),
+	set: (names: string[]) => {
+		if (!resource.doc) return
+		resource.doc.organizations = names.map((organization) => ({
+			organization,
+		}))
 		markDirty()
 	},
 })

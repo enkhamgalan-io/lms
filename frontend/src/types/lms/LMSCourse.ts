@@ -1,6 +1,7 @@
 import { ChapterReference } from './ChapterReference'
 import { CourseInstructor } from './CourseInstructor'
 import { RelatedCourses } from './RelatedCourses'
+import { LMSVisibleOrganization } from './LMSVisibleOrganization'
 
 export interface LMSCourse {
 	creation: string
@@ -37,6 +38,8 @@ export interface LMSCourse {
 	chapters?: ChapterReference[]
 	/**	Instructors : Table MultiSelect - Course Instructor	*/
 	instructors: CourseInstructor[]
+	/**	Visible To Organizations : Table MultiSelect - LMS Visible Organization	*/
+	organizations?: LMSVisibleOrganization[]
 	/**	Completion Certificate : Check	*/
 	enable_certification?: 0 | 1
 	/**	Related Courses : Table - Related Courses	*/

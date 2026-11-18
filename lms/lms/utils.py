@@ -1427,7 +1427,7 @@ def is_self_scoped(filters: dict) -> bool:
 	return any(filters.get(key) for key in SELF_SCOPED_FILTERS)
 
 
-def restrict_to_published(filters: dict, self_scoped: bool) -> None:
+def restrict_to_published(filters: dict, self_scoped: bool, doctype: str = "LMS Course") -> None:
 	"""Pin `published` for callers not entitled to drafts, in place.
 
 	The course and batch lists are whitelisted with allow_guest and hand
@@ -1438,6 +1438,11 @@ def restrict_to_published(filters: dict, self_scoped: bool) -> None:
 	if self_scoped or can_list_unpublished():
 		return
 	filters["published"] = 1
+	# Published to some organizations only, and the caller is outside them.
+	from lms.lms.permissions import hidden_by_organization
+
+	if hidden := hidden_by_organization(doctype):
+		filters["name"] = ["not in", hidden]
 
 
 # The fields each course and batch list filters on, plus the pseudo-filters the
@@ -3883,7 +3888,7 @@ def get_batches(
 
 	self_scoped = is_self_scoped(filters)
 	update_batch_filters(filters)
-	restrict_to_published(filters, self_scoped)
+	restrict_to_published(filters, self_scoped, "LMS Batch")
 
 	batches = frappe.get_all(
 		"LMS Batch",
@@ -3943,7 +3948,7 @@ def get_batch_count(filters: dict = None) -> int:
 
 	self_scoped = is_self_scoped(filters)
 	update_batch_filters(filters)
-	restrict_to_published(filters, self_scoped)
+	restrict_to_published(filters, self_scoped, "LMS Batch")
 	total = count_matching("LMS Batch", filters)
 
 	batch_type = get_batch_type(filters)

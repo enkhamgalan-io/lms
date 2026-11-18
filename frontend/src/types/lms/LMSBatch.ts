@@ -3,6 +3,7 @@ import { CourseInstructor } from './CourseInstructor'
 import { LMSAssessment } from './LMSAssessment'
 import { LMSBatchTimetable } from './LMSBatchTimetable'
 import { LMSTimetableLegend } from './LMSTimetableLegend'
+import { LMSVisibleOrganization } from './LMSVisibleOrganization'
 
 export interface LMSBatch {
 	creation: string
@@ -75,6 +76,8 @@ export interface LMSBatch {
 	timezone: string
 	/**	Instructors : Table MultiSelect - Course Instructor	*/
 	instructors: CourseInstructor[]
+	/**	Visible To Organizations : Table MultiSelect - LMS Visible Organization	*/
+	organizations?: LMSVisibleOrganization[]
 	/**	Confirmation Email Template : Link - Email Template	*/
 	confirmation_email_template?: string
 	/**	Certification : Check	*/

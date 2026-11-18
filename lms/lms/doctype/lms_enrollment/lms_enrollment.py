@@ -126,6 +126,11 @@ class LMSEnrollment(Document):
 		if not course_details.published and not managed:
 			frappe.throw(_("You cannot enroll in an unpublished course."))
 
+		from lms.lms.permissions import hidden_by_organization
+
+		if not managed and self.course in hidden_by_organization("LMS Course", self.member):
+			frappe.throw(_("This course is open to other organizations only."), frappe.PermissionError)
+
 		if course_details.paid_course and not managed:
 			payment = frappe.db.exists(
 				"LMS Payment",

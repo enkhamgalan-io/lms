@@ -23,6 +23,7 @@ from lms.lms.permissions import (
 	can_use_conferencing_account,
 	courses_authored_by,
 	evaluator_role_reads_batch,
+	hidden_by_organization,
 	is_site_administrator,
 )
 from lms.lms.utils import (
@@ -736,7 +737,7 @@ def has_permission(doc, ptype="read", user=None):
 		return True
 
 	is_batch_published = frappe.db.get_value("LMS Batch", doc.name, "published")
-	if is_batch_published:
+	if is_batch_published and doc.name not in hidden_by_organization("LMS Batch", user):
 		return True
 
 	return False
@@ -759,7 +760,8 @@ def get_permission_query_conditions(user=None):
 	enrollment = frappe.qb.DocType("LMS Batch Enrollment")
 	member = LiteralValue(frappe.db.escape(user))
 	enrolled = frappe.qb.from_(enrollment).select(enrollment.batch).where(enrollment.member == member)
-	condition = Bracket(
-		(batch.published == 1) | batch.name.isin(enrolled) | authored_batch_condition(batch.name, user)
-	)
+	published = batch.published == 1
+	if hidden := hidden_by_organization("LMS Batch", user):
+		published = published & batch.name.notin(hidden)
+	condition = Bracket(published | batch.name.isin(enrolled) | authored_batch_condition(batch.name, user))
 	return condition.get_sql(with_namespace=True, quote_char="`" if frappe.db.db_type == "mariadb" else '"')

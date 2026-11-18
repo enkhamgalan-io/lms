@@ -70,6 +70,7 @@ from lms.lms.html_sanitizer import sanitize_rich_text
 from lms.lms.permissions import (
 	can_manage_member,
 	can_manage_members,
+	hidden_by_organization,
 	is_site_administrator,
 	managed_organizations,
 	manages_every_member,
@@ -4246,7 +4247,7 @@ def get_my_latest_courses():
 def get_featured_home_courses():
 	return frappe.get_all(
 		"LMS Course",
-		{"published": 1, "featured": 1},
+		{"published": 1, "featured": 1, "name": ["not in", hidden_by_organization("LMS Course")]},
 		order_by="published_on desc",
 		limit=3,
 		pluck="name",
@@ -4258,6 +4259,7 @@ def get_popular_courses():
 		"LMS Course",
 		{
 			"published": 1,
+			"name": ["not in", hidden_by_organization("LMS Course")],
 		},
 		order_by="enrollments desc",
 		limit=3,
@@ -4405,6 +4407,7 @@ def get_upcoming_batches():
 		{
 			"published": 1,
 			"start_date": [">=", getdate()],
+			"name": ["not in", hidden_by_organization("LMS Batch")],
 		},
 		order_by="start_date asc",
 		limit=4,

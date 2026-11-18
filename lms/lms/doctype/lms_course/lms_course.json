@@ -24,6 +24,7 @@
   "upcoming",
   "featured",
   "disable_self_learning",
+  "organizations",
   "enforce_lesson_completion",
   "section_break_18",
   "short_introduction",
@@ -95,6 +96,13 @@
    "fieldname": "disable_self_learning",
    "fieldtype": "Check",
    "label": "Disable Self Learning"
+  },
+  {
+   "description": "Only the people of these organizations, and of the organizations under them, see this and can enroll. Leave empty to show it to everyone.",
+   "fieldname": "organizations",
+   "fieldtype": "Table MultiSelect",
+   "label": "Visible To Organizations",
+   "options": "LMS Visible Organization"
   },
   {
    "default": "0",
@@ -322,7 +330,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2026-02-19 11:41:57.038869",
+ "modified": "2026-11-18 00:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Course",

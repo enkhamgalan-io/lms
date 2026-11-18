@@ -166,6 +166,14 @@
 								}}
 							</template>
 						</MultiLink>
+						<MultiLink
+							v-model="organizations"
+							doctype="LMS Organization"
+							:label="__('Visible to organizations')"
+							:description="__('Leave empty to show this batch to everyone.')"
+							:placeholder="__('Everyone')"
+							variant="outline"
+						/>
 						<Select
 							v-model="batchDetail.doc.medium"
 							:label="__('Medium')"
@@ -377,6 +385,19 @@ const router = useRouter()
 const route = useRoute()
 const user = inject<SessionUser>('$user')!
 const instructors = ref<string[]>([])
+
+// Child rows on the batch, names in the picker. The doc watcher marks it dirty.
+const organizations = computed<string[]>({
+	get: () =>
+		(batchDetail.doc?.organizations ?? []).map((row) => row.organization),
+	set: (names: string[]) => {
+		if (batchDetail.doc)
+			// New rows carry only the link; the server fills in the rest.
+			batchDetail.doc.organizations = names.map((organization) => ({
+				organization,
+			})) as LMSBatch['organizations']
+	},
+})
 const dateFormat = getDateFormat()
 const app = getCurrentInstance()!
 const { $dialog } = app.appContext.config.globalProperties as {

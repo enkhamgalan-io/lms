@@ -16,7 +16,12 @@ from lms.lms.doctype.lms_enrollment.lms_enrollment import (
 	validate_identity_unchanged,
 )
 from lms.lms.locking import locked_count
-from lms.lms.permissions import authored_batch_condition, can_author_batch, is_site_administrator
+from lms.lms.permissions import (
+	authored_batch_condition,
+	can_author_batch,
+	hidden_by_organization,
+	is_site_administrator,
+)
 from lms.lms.utils import has_moderator_role
 
 # Roles that keep today's blanket access: every row, every ptype.
@@ -58,6 +63,7 @@ class LMSBatchEnrollment(Document):
 		self.validate_duplicate_members()
 		self.validate_payment()
 		self.validate_self_enrollment()
+		self.validate_organization()
 		self.validate_course_enrollment()
 
 	def validate_owner(self):
@@ -107,6 +113,13 @@ class LMSBatchEnrollment(Document):
 		if self.owner != self.member or can_author_batch(self.batch):
 			return
 		frappe.throw(_("Enrollment in this batch is restricted. Please contact the Administrator."))
+
+	def validate_organization(self):
+		"""A batch shown to some organizations only takes their people when they enroll themselves."""
+		if not self.is_new() or self.owner != self.member or can_author_batch(self.batch):
+			return
+		if self.batch in hidden_by_organization("LMS Batch", self.member):
+			frappe.throw(_("This batch is open to other organizations only."), frappe.PermissionError)
 
 	def can_skip_payment(self):
 		"""Only a site admin or Moderator enrolls themselves without paying. The
