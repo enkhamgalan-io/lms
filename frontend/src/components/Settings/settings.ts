@@ -327,6 +327,20 @@ export const settingsTree: SettingsGroup[] = [
 				records: true,
 				page: membersSettingsPage,
 			},
+			{
+				label: __('Organization Report'),
+				slug: 'organization-report',
+				icon: 'lucide-chart-column',
+				page: {
+					kind: 'custom',
+					component: markRaw(
+						defineAsyncComponent(
+							() =>
+								import('@/components/Settings/Members/OrganizationReport.vue')
+						)
+					),
+				},
+			},
 		],
 	},
 	{
