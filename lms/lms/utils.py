@@ -242,12 +242,30 @@ def get_membership(course: str, member: str = None):
 				"course",
 				"purchased_certificate",
 				"certificate",
+				"valid_until",
 			],
 			as_dict=True,
 		)
+		membership.access_expired = not enrollment_is_active(membership.valid_until)
 		return membership
 
 	return False
+
+
+def enrollment_is_active(valid_until) -> bool:
+	"""An enrollment opens its course through its valid_until day; none means for good."""
+	return not valid_until or getdate(valid_until) >= getdate()
+
+
+def has_active_enrollment(course: str, member: str | None = None) -> bool:
+	"""Enrolled, and the enrollment's access has not run out."""
+	row = frappe.db.get_value(
+		"LMS Enrollment",
+		{"course": course, "member": member or frappe.session.user},
+		["name", "valid_until"],
+		as_dict=True,
+	)
+	return bool(row) and enrollment_is_active(row.valid_until)
 
 
 def get_chapters(course: str):
@@ -2974,7 +2992,7 @@ def can_access_topic(doctype: str, docname: str) -> bool:
 	is_student = False
 	if doctype == "Course Lesson":
 		course = frappe.db.get_value("Course Lesson", docname, "course")
-		is_student = frappe.db.exists("LMS Enrollment", {"course": course, "member": frappe.session.user})
+		is_student = has_active_enrollment(course)
 		if not is_student and not can_modify_course(course):
 			return False
 	elif doctype == "LMS Batch":
@@ -4136,8 +4154,7 @@ def validate_course_access(lesson: str):
 		return
 
 	course = frappe.db.get_value("Course Lesson", lesson, "course")
-	enrollment_exists = frappe.db.exists("LMS Enrollment", {"member": frappe.session.user, "course": course})
-	if not enrollment_exists:
+	if not has_active_enrollment(course):
 		frappe.throw(_("You do not have access to this course."))
 
 

@@ -87,6 +87,29 @@
 			</div>
 		</div>
 
+		<div
+			v-if="student"
+			class="flex items-end gap-2 rounded-[12px] bg-surface-gray-1 px-[18px] py-[14px]"
+		>
+			<FormControl
+				v-model="accessUntil"
+				class="flex-1"
+				type="date"
+				:label="__('Access until')"
+				:description="
+					accessExpired
+						? __('Access has ended. Pick a later day to open it again.')
+						: __('Leave empty for no end.')
+				"
+			/>
+			<Button
+				:label="__('Save')"
+				:loading="savingAccess.loading"
+				:disabled="accessUntil === (student.valid_until ?? '')"
+				@click="saveAccess"
+			/>
+		</div>
+
 		<div class="flex flex-col divide-y divide-outline-gray-1">
 			<section
 				v-if="assessments.length"
@@ -235,7 +258,7 @@
 	</StudentSheetLayout>
 </template>
 <script setup lang="ts">
-import { Badge, createResource, toast } from 'frappe-ui'
+import { Badge, Button, FormControl, createResource, toast } from 'frappe-ui'
 import type { BadgeProps } from 'frappe-ui'
 import { computed, ref, watch } from 'vue'
 import StudentSheetLayout from '@/components/Dashboard/StudentSheetLayout.vue'
@@ -318,6 +341,39 @@ watch(
 )
 
 const student = computed<CourseStudentDetail | null>(() => detail.data ?? null)
+
+// The day the student's access ends, as the date input holds it ('' for no end).
+const accessUntil = ref('')
+watch(
+	() => student.value?.valid_until,
+	(day) => (accessUntil.value = day ?? ''),
+	{ immediate: true }
+)
+const accessExpired = computed(() => {
+	const day = student.value?.valid_until
+	return Boolean(day) && day! < serverTime().format('YYYY-MM-DD')
+})
+
+const savingAccess = createResource({
+	url: 'lms.lms.dashboard.course.set_course_access',
+})
+
+const saveAccess = (): void => {
+	savingAccess
+		.submit({
+			course: props.courseName,
+			enrollment: props.enrollment,
+			valid_until: accessUntil.value || null,
+		})
+		.then(
+			() => {
+				toast.success(__('Access updated'))
+				load()
+			},
+			(error: unknown) =>
+				toast.error(resourceErrorMessage(error, __('Could not update access')))
+		)
+}
 
 const formatDate = (at: string): string => serverTime(at).format('D MMM YYYY')
 

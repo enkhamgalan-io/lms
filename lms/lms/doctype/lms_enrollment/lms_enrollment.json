@@ -11,6 +11,7 @@
   "payment",
   "current_lesson",
   "enrollment_from_batch",
+  "valid_until",
   "column_break_3",
   "member",
   "member_name",
@@ -139,12 +140,19 @@
    "label": "Enrollment from Batch",
    "options": "LMS Batch",
    "set_only_once": 1
+  },
+  {
+   "description": "The learner can no longer open the course after this day. Staff can extend it.",
+   "fieldname": "valid_until",
+   "fieldtype": "Date",
+   "label": "Valid Until",
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-29 12:00:00.000000",
+ "modified": "2026-11-18 00:00:02.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Enrollment",

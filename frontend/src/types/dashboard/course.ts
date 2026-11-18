@@ -114,6 +114,8 @@ export type CourseStudentRow = {
 	currency: string | null
 	last_active: string | null
 	enrolled_on: string
+	/** The last day the student can open the course; null for no end. */
+	valid_until: string | null
 }
 
 export interface CourseStudentsPage {

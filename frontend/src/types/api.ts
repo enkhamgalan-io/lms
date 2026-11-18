@@ -68,6 +68,10 @@ export interface Membership {
 	current_lesson?: string
 	purchased_certificate?: 0 | 1 | boolean
 	certificate?: string
+	/** The last day the learner can open the course; null for no end. */
+	valid_until?: string | null
+	/** valid_until has passed: lessons, quizzes and assignments are closed. */
+	access_expired?: boolean
 }
 
 export interface CourseDetails

@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 from frappe.database.database import savepoint
 from frappe.model.document import Document
-from frappe.utils import ceil
+from frappe.utils import add_days, ceil, nowdate
 
 from lms.lms.locking import locked_count
 
@@ -20,6 +20,15 @@ class LMSEnrollment(Document):
 		self.validate_duplicate_enrollment()
 		self.validate_course_enrollment_eligibility()
 		self.validate_owner()
+		self.set_valid_until()
+
+	def set_valid_until(self):
+		"""Access runs `access_days` from enrolling; a batch's learners follow the batch's
+		own dates. Staff may set another day themselves."""
+		if self.enrollment_from_batch or (self.valid_until and self.managed_by_caller()):
+			return
+		days = frappe.db.get_value("LMS Course", self.course, "access_days")
+		self.valid_until = add_days(nowdate(), days) if days else None
 
 	def enforce_member_ownership(self):
 		"""The member is the caller, unless the caller manages the course or the
@@ -45,6 +54,9 @@ class LMSEnrollment(Document):
 		defaults = {"progress": 0, "purchased_certificate": 0}
 		for field, default in defaults.items():
 			setattr(self, field, previous.get(field) if previous else default)
+		# Set on insert by set_valid_until; only staff extend it afterwards.
+		if previous:
+			self.valid_until = previous.valid_until
 
 	def managed_by_caller(self) -> bool:
 		"""A Moderator, a site administrator or an author of this course. A site-wide

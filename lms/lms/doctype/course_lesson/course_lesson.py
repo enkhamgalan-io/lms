@@ -732,7 +732,9 @@ def _student_placements(assessment_type: str, assessment_name: str) -> list[str]
 
 
 def _can_complete_for(course: str, lesson: str, member: str, rules: dict) -> bool:
-	if not frappe.db.exists("LMS Enrollment", {"course": course, "member": member}):
+	from lms.lms.utils import has_active_enrollment
+
+	if not has_active_enrollment(course, member):
 		return False
 	if frappe.db.exists("LMS Course Progress", {"lesson": lesson, "member": member}):
 		return False
