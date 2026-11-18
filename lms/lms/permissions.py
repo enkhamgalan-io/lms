@@ -20,8 +20,10 @@ from pypika.terms import LiteralValue
 from lms.lms.utils import (
 	can_modify_batch,
 	can_modify_course,
+	enrollment_is_active,
 	get_membership,
 	guest_access_allowed,
+	has_active_enrollment,
 	has_moderator_role,
 	moderators_among,
 )
@@ -495,7 +497,7 @@ def resolve_lesson_access(lesson: str, *, user: str | None = None) -> tuple[bool
 		frappe.session.user = user
 		if can_modify_course(lesson_row.course):
 			return True, True
-		if get_membership(lesson_row.course, user):
+		if has_active_enrollment(lesson_row.course, user):
 			return False, True
 		# Preview is for prospective students of a LIVE course. Require the course to be
 		# published so draft lessons don't leak via this gate (matches get_course_details,
@@ -992,13 +994,12 @@ def _enrolled_in(courses: set, user: str) -> set:
 	course, not one per course."""
 	if not courses:
 		return set()
-	return set(
-		frappe.get_all(
-			"LMS Enrollment",
-			filters={"member": user, "course": ("in", list(courses))},
-			pluck="course",
-		)
+	rows = frappe.get_all(
+		"LMS Enrollment",
+		filters={"member": user, "course": ("in", list(courses))},
+		fields=["course", "valid_until"],
 	)
+	return {row.course for row in rows if enrollment_is_active(row.valid_until)}
 
 
 def _evaluated_courses(user: str):
@@ -1624,10 +1625,11 @@ def _course_conditions(doctype: str, assessment, user: str, *, include_members: 
 def _enrolled_courses(user: str):
 	"""The courses `user` is enrolled in, as a subquery."""
 	enrollment = frappe.qb.DocType("LMS Enrollment")
+	active = enrollment.valid_until.isnull() | (enrollment.valid_until >= frappe.utils.nowdate())
 	return (
 		frappe.qb.from_(enrollment)
 		.select(enrollment.course)
-		.where(enrollment.member == LiteralValue(frappe.db.escape(user)))
+		.where((enrollment.member == LiteralValue(frappe.db.escape(user))) & Bracket(active))
 	)
 
 

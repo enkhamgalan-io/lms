@@ -14,7 +14,18 @@
 					<div v-if="lessonCounts.total" class="text-p-sm text-ink-gray-7">
 						{{ lessonsCompletedLabel }}
 					</div>
+					<div
+						v-if="course.data.membership.access_expired"
+						class="rounded bg-surface-amber-1 px-3 py-2 text-p-sm text-ink-amber-8"
+					>
+						{{
+							__(
+								'Your access to this course ended on {0}. Ask your instructor to extend it.'
+							).format(course.data.membership.valid_until)
+						}}
+					</div>
 					<Button
+						v-else
 						variant="solid"
 						size="md"
 						class="w-full"

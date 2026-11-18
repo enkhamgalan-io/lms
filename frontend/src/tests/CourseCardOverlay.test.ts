@@ -61,6 +61,25 @@ describe('the learner progress in the course side card', () => {
 		expect(wrapper.text()).not.toContain('Start Learning')
 	})
 
+	it('says access has ended instead of offering to continue', () => {
+		const wrapper = mountWith(
+			{
+				lessons: 14,
+				membership: {
+					progress: 40,
+					valid_until: '2026-01-31',
+					access_expired: true,
+				},
+			},
+			[{ lessons: lessons(5, 14) }]
+		)
+
+		expect(wrapper.text()).toContain(
+			'Your access to this course ended on 2026-01-31.'
+		)
+		expect(wrapper.text()).not.toContain('Continue Learning')
+	})
+
 	it('says Start Learning before the first lesson is done', () => {
 		const wrapper = mountWith({ lessons: 14, membership: { progress: 0 } }, [
 			{ lessons: lessons(0, 14) },

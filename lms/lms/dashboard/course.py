@@ -503,6 +503,7 @@ def _course_students_query(course: str, lessons: list[str], stage: str | None, s
 		Payment.amount,
 		Payment.currency,
 		Enrollment.creation.as_("enrolled_on"),
+		Enrollment.valid_until,
 	)
 	return query, fields, Enrollment
 
@@ -873,6 +874,19 @@ def send_course_reminder(course: str, enrollment: str) -> dict:
 	)
 	title = frappe.db.get_value("LMS Course", course, "title")
 	return _send_reminder("LMS Enrollment", enrollment, member, title, f"courses/{course}", up_next)
+
+
+@frappe.whitelist(methods=["POST"])
+def set_course_access(course: str, enrollment: str, valid_until: str | None = None) -> dict:
+	"""Extend, shorten or lift a student's access to the course. Empty means no end."""
+	_check_dashboard_access(course)
+	if not isinstance(enrollment, str) or not frappe.db.exists(
+		"LMS Enrollment", {"name": enrollment, "course": course}
+	):
+		frappe.throw(_("This student is not enrolled in this course."), frappe.DoesNotExistError)
+	valid_until = getdate(valid_until) if valid_until else None
+	frappe.db.set_value("LMS Enrollment", enrollment, "valid_until", valid_until)
+	return {"enrollment": enrollment, "valid_until": valid_until}
 
 
 @frappe.whitelist(methods=["POST"])
