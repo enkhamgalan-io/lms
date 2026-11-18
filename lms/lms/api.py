@@ -3132,11 +3132,15 @@ def get_organization_report(organization: str | None = None, course: str | None 
 		frappe.get_all("LMS Course", {"name": ["in", list(courses)]}, ["name", "title"], as_list=True)
 	)
 	key_filters = {"member": ["in", list(people)], "course": ["in", list(courses)]}
+	from lms.lms.doctype.lms_quiz.lms_quiz import OPINION_TYPES
+
+	# Surveys and polls are not scored, and an anonymous one must not show who took it.
+	opinion_quizzes = frappe.get_all("LMS Quiz", {"quiz_type": ["in", OPINION_TYPES]}, pluck="name")
 	averages = {
 		(row.member, row.course): row.average
 		for row in frappe.get_all(
 			"LMS Quiz Submission",
-			key_filters,
+			{**key_filters, "quiz": ["not in", opinion_quizzes]},
 			["member", "course", {"AVG": "percentage", "as": "average"}],
 			group_by="member, course",
 		)
