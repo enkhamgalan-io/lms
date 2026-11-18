@@ -25,7 +25,7 @@ const { callMock, createResourceMock, switchIds, toastMock } = vi.hoisted(
 			switchIds: { n: 0 },
 			toastMock: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 		}
-	},
+	}
 )
 
 // HeaderButton wraps frappe-ui's Button in a Tooltip below the mobile
@@ -95,11 +95,20 @@ vi.mock(
 			typeof import('@framework/ui/components/Onboarding/index')
 		>()),
 		useOnboarding: () => ({ updateOnboardingStep: vi.fn() }),
-	}),
+	})
 )
 vi.mock('@framework/ui/telemetry/index', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@framework/ui/telemetry/index')>()),
 	useTelemetry: () => ({ capture: vi.fn() }),
+}))
+
+// The real Link searches through a Pinia store; a plain input is all the form needs.
+vi.mock('@/components/Controls/Link.vue', () => ({
+	default: {
+		props: ['modelValue', 'label'],
+		emits: ['update:modelValue'],
+		template: `<input :data-testid="'link-' + label" :value="modelValue" @input="$emit('update:modelValue', $event.target.value)" />`,
+	},
 }))
 
 // @/utils is the barrel that pulls in plyr; only cleanError is used here.
@@ -123,6 +132,10 @@ createResourceMock.mockImplementation(() => lookup)
 
 const moderator = { name: 'mod@example.com', is_moderator: true }
 const outsider = { name: 'someone@example.com' }
+const organizationManager = {
+	name: 'hr@example.com',
+	is_organization_manager: true,
+}
 
 const FormRoute = { path: '/settings/users/:memberID', component: MemberForm }
 
@@ -142,7 +155,7 @@ const makeRouter = (): Router =>
 
 const mountForm = async (
 	router: Router,
-	user: Record<string, unknown> | null = moderator,
+	user: Record<string, unknown> | null = moderator
 ) => {
 	const wrapper = mount(defineComponent({ render: () => h(RouterView) }), {
 		global: {
@@ -201,7 +214,7 @@ describe('the member form route', () => {
 			expect(fields(wrapper).exists()).toBe(false)
 			expect(save(wrapper).exists()).toBe(false)
 			expect(toastMock.warning).toHaveBeenLastCalledWith(
-				expect.stringContaining('You are not permitted to manage members.'),
+				expect.stringContaining('You are not permitted to manage members.')
 			)
 		})
 
@@ -221,6 +234,19 @@ describe('the member form route', () => {
 
 			expect(fields(wrapper).exists()).toBe(true)
 			expect(save(wrapper).exists()).toBe(true)
+		})
+
+		it('opens for an Organization Manager, with the Student role alone', async () => {
+			const router = makeRouter()
+			await router.push('/settings/users/new')
+			const wrapper = await mountForm(router, organizationManager)
+
+			expect(fields(wrapper).exists()).toBe(true)
+			expect(
+				wrapper
+					.findAll('[data-testid="role-row"]')
+					.map((row) => row.get('[data-testid="switch-label"]').text())
+			).toEqual(['Student'])
 		})
 
 		// A refused page must not go on to ask the server for the row either.
@@ -271,7 +297,7 @@ describe('the member form route', () => {
 			// and pages, so a member it happened not to return left this form with
 			// Save disabled forever and nothing on screen explaining it.
 			expect(createResourceMock.mock.calls[0][0].url).toBe(
-				'lms.lms.api.get_member',
+				'lms.lms.api.get_member'
 			)
 			expect(createResourceMock.mock.calls[0][0].makeParams()).toEqual({
 				member: MEMBER,
@@ -286,20 +312,20 @@ describe('the member form route', () => {
 
 			expect(save(wrapper).attributes('disabled')).toBeUndefined()
 			expect(switchNamed(wrapper, 'Student').attributes('aria-checked')).toBe(
-				'true',
+				'true'
 			)
 			expect(
-				switchNamed(wrapper, 'Course Creator').attributes('aria-checked'),
+				switchNamed(wrapper, 'Course Creator').attributes('aria-checked')
 			).toBe('true')
 			expect(switchNamed(wrapper, 'Moderator').attributes('aria-checked')).toBe(
-				'false',
+				'false'
 			)
 			// The email is the route param, not something the parent handed over.
 			expect(
 				(
 					wrapper.find('[data-testid="field-Email"] input')
 						.element as HTMLInputElement
-				).value,
+				).value
 			).toBe(MEMBER)
 		})
 
@@ -324,6 +350,7 @@ describe('the member form route', () => {
 				email: MEMBER,
 				first_name: undefined,
 				last_name: undefined,
+				profile: { organization: null, designation: null, rank: null },
 			})
 			expect(callMock).toHaveBeenCalledWith('lms.lms.api.save_role', {
 				user: MEMBER,
@@ -364,7 +391,7 @@ describe('the member form route', () => {
 			const rows = wrapper.findAll('[data-testid="role-row"]')
 
 			expect(
-				rows.map((row) => row.get('[data-testid="switch-label"]').text()),
+				rows.map((row) => row.get('[data-testid="switch-label"]').text())
 			).toEqual(['Student', 'Course Creator', 'Evaluator', 'Moderator'])
 			for (const row of rows) {
 				expect(row.findAll('[data-testid="switch-label"]')).toHaveLength(1)
@@ -438,6 +465,46 @@ describe('the member form route', () => {
 			user: MEMBER,
 			role: 'Moderator',
 			value: 1,
+		})
+	})
+
+	describe('an Organization Manager adding a member', () => {
+		const fillAndSave = async (organization: string) => {
+			const router = makeRouter()
+			await router.push('/settings/users/new')
+			const wrapper = await mountForm(router, organizationManager)
+			await wrapper
+				.get('[data-testid="field-Email"] input')
+				.setValue('new@example.com')
+			if (organization)
+				await wrapper
+					.get('[data-testid="link-Organization"]')
+					.setValue(organization)
+			await wrapper
+				.get('[data-testid="field-Designation"] input')
+				.setValue('Clerk')
+			await save(wrapper).trigger('click')
+			await flushPromises()
+		}
+
+		it('places them in the organization picked', async () => {
+			callMock.mockResolvedValue({ name: 'new@example.com' })
+			await fillAndSave('Agency')
+
+			expect(callMock).toHaveBeenCalledWith(
+				'lms.lms.api.add_member',
+				expect.objectContaining({
+					email: 'new@example.com',
+					profile: { organization: 'Agency', designation: 'Clerk', rank: null },
+				})
+			)
+		})
+
+		it('asks for an organization before sending anything', async () => {
+			await fillAndSave('')
+
+			expect(callMock).not.toHaveBeenCalled()
+			expect(toastMock.error).toHaveBeenCalledWith('Organization is required')
 		})
 	})
 })

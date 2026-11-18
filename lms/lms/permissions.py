@@ -1751,3 +1751,86 @@ def validate_filed_for_self(doc, fieldname: str):
 		frappe.PermissionError,
 		title=_("Cannot submit for another user"),
 	)
+
+
+# Held by whoever an LMS Organization lists as a manager; LMSOrganization keeps it in step.
+ORGANIZATION_MANAGER_ROLE = "Organization Manager"
+
+
+def manages_every_member(user: str | None = None) -> bool:
+	"""Site administrators and Moderators manage members site-wide."""
+	user = user or frappe.session.user
+	return is_site_administrator(user) or "Moderator" in frappe.get_roles(user)
+
+
+def managed_organizations(user: str | None = None) -> list[str]:
+	"""The organizations `user` lists as a manager, and every organization under them."""
+	from frappe.utils.nestedset import get_descendants_of
+
+	user = user or frappe.session.user
+	roots = frappe.get_all(
+		"LMS Organization Manager", {"user": user, "parenttype": "LMS Organization"}, pluck="parent"
+	)
+	names = set(roots)
+	for root in roots:
+		names.update(get_descendants_of("LMS Organization", root, ignore_permissions=True))
+	return sorted(names)
+
+
+def can_manage_members(user: str | None = None) -> bool:
+	user = user or frappe.session.user
+	return manages_every_member(user) or bool(managed_organizations(user))
+
+
+def can_manage_member(member: str, user: str | None = None) -> bool:
+	"""Whether `user` may see and change `member`: site-wide for Moderators, otherwise only
+	the people of an organization the user manages."""
+	user = user or frappe.session.user
+	if manages_every_member(user):
+		return True
+	organization = frappe.db.get_value("User", member, "organization")
+	return bool(organization) and organization in managed_organizations(user)
+
+
+def _scoped_to_organizations(user: str) -> bool:
+	"""An Organization Manager reads User through that role alone; the rule narrows them.
+	Anyone else is left to the DocPerm rows they already hold."""
+	return ORGANIZATION_MANAGER_ROLE in frappe.get_roles(user) and not manages_every_member(user)
+
+
+def user_has_permission(doc, ptype="read", user=None) -> bool:
+	"""An Organization Manager opens their own account and the people they manage."""
+	user = user or frappe.session.user
+	if not _scoped_to_organizations(user) or doc.name == user:
+		return True
+	# The stored organization, so relabelling a stranger does not bring them in scope.
+	stored = frappe.db.get_value("User", doc.name, "organization")
+	return bool(stored) and stored in managed_organizations(user)
+
+
+def user_query_conditions(user=None, doctype=None) -> str:
+	user = user or frappe.session.user
+	if not _scoped_to_organizations(user):
+		return ""
+	table = frappe.qb.DocType("User")
+	condition = table.name == LiteralValue(frappe.db.escape(user))
+	if organizations := managed_organizations(user):
+		condition = condition | table.organization.isin(organizations)
+	return _render(Bracket(condition))
+
+
+def organization_has_permission(doc, ptype="read", user=None) -> bool:
+	user = user or frappe.session.user
+	if manages_every_member(user):
+		return True
+	return ptype in ("read", "select") and doc.name in managed_organizations(user)
+
+
+def organization_query_conditions(user=None, doctype=None) -> str:
+	user = user or frappe.session.user
+	if manages_every_member(user):
+		return ""
+	organizations = managed_organizations(user)
+	if not organizations:
+		return "1=0"
+	return _render(frappe.qb.DocType("LMS Organization").name.isin(organizations))

@@ -48,8 +48,14 @@ vi.mock('@/components/Settings/Members/members', () => ({
 	MEMBERS_DOCTYPE: 'User',
 	ROLE_ROWS: [{ key: 'student', role: 'LMS Student' }],
 	memberError: (_error: unknown, fallback: string) => fallback,
+	canManageMembers: (user?: Record<string, boolean>) =>
+		Boolean(user?.is_moderator || user?.is_organization_manager),
+	grantableRoleRows: () => [{ key: 'student', role: 'LMS Student' }],
 	noRoles: () => ({ student: false }),
 	rolesFrom: () => ({}),
+}))
+vi.mock('@/components/Controls/Link.vue', () => ({
+	default: { template: '<div />' },
 }))
 vi.mock('@/composables/useSettingsRecord', () => ({
 	useSettingsRecord: () => {
@@ -77,12 +83,15 @@ vi.mock('@/utils', () => ({ sanitizeHTML: (html: string) => html }))
 
 import MemberForm from '@/components/Settings/Members/MemberForm.vue'
 
-const mountForm = (name: string) =>
+const mountForm = (
+	name: string,
+	user: Record<string, boolean> = { is_moderator: true }
+) =>
 	mount(MemberForm, {
 		props: { name },
 		global: {
 			mocks: { __: (text: string) => text },
-			provide: { $user: { data: { is_moderator: true } } },
+			provide: { $user: { data: user } },
 		},
 	})
 
@@ -118,6 +127,9 @@ describe('Settings member form', () => {
 				mobile_no: null,
 				location: null,
 				bio: null,
+				organization: null,
+				designation: null,
+				rank: null,
 			},
 		})
 		expect(record.save).not.toHaveBeenCalled()
@@ -220,5 +232,31 @@ describe('Settings member form', () => {
 		finishReload()
 		await flushPromises()
 		expect(w.emitted('back')).toHaveLength(1)
+	})
+
+	it('keeps an Organization Manager from adding a member with no organization', async () => {
+		record.doc = reactive({ email: 'ada@example.com', first_name: 'Ada' })
+		const w = mountForm('new', { is_organization_manager: true })
+		await w.get('[data-testid="save"]').trigger('click')
+		await flushPromises()
+
+		expect(callMock).not.toHaveBeenCalled()
+
+		record.doc = reactive({
+			email: 'ada@example.com',
+			first_name: 'Ada',
+			organization: 'Agency',
+		})
+		callMock.mockResolvedValue({ name: 'ada@example.com' })
+		const placed = mountForm('new', { is_organization_manager: true })
+		await placed.get('[data-testid="save"]').trigger('click')
+		await flushPromises()
+
+		expect(callMock).toHaveBeenCalledWith(
+			'lms.lms.api.add_member',
+			expect.objectContaining({
+				profile: expect.objectContaining({ organization: 'Agency' }),
+			})
+		)
 	})
 })

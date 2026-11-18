@@ -1,7 +1,10 @@
 import { defineAsyncComponent, h, markRaw } from 'vue'
 import type { SettingsGroup } from '@/types/settingsSchema'
 import Categories from '@/components/Settings/Categories.vue'
-import { membersSettingsPage } from '@/components/Settings/Members/members'
+import {
+	canManageMembers,
+	membersSettingsPage,
+} from '@/components/Settings/Members/members'
 import { emailAccountsPage } from '@/components/Settings/EmailAccount/emailAccounts'
 import { emailTemplateSettingsPage } from '@/components/Settings/EmailTemplate/emailTemplate'
 import { sidebarSettingsPage } from '@/components/Settings/Sidebar/sidebar'
@@ -315,6 +318,7 @@ export const settingsTree: SettingsGroup[] = [
 	},
 	{
 		label: __('User Management'),
+		audience: () => canManageMembers(usersStore().userResource.data),
 		items: [
 			{
 				label: __('Users'),

@@ -32,12 +32,35 @@
 						class="w-full"
 					/>
 				</div>
+				<template v-if="!isEdit">
+					<Link
+						v-model="member.organization"
+						doctype="LMS Organization"
+						:label="__('Organization')"
+						:required="!user.data?.is_moderator"
+					/>
+					<div class="flex items-center gap-3">
+						<FormControl
+							v-model="member.designation"
+							:label="__('Designation')"
+							type="text"
+							class="w-full"
+						/>
+						<FormControl
+							v-model="member.rank"
+							:label="__('Rank')"
+							type="text"
+							class="w-full"
+						/>
+					</div>
+				</template>
 				<div class="flex flex-col gap-2">
 					<div class="text-p-sm-medium text-ink-gray-7">
 						{{ __('Roles') }}
 					</div>
 					<RoleSwitches
 						:model-value="roles"
+						:rows="grantableRoleRows(user.data)"
 						@toggle="(key, value) => (roles[key] = value)"
 					/>
 				</div>
@@ -62,6 +85,7 @@ import { computed, inject, onMounted, reactive, ref, watch } from 'vue'
 import { useOnboarding } from '@framework/ui/components/Onboarding/index'
 import { seesOnboarding } from '@/utils/onboarding'
 import { useTelemetry } from '@framework/ui/telemetry/index'
+import Link from '@/components/Controls/Link.vue'
 import RoleSwitches from '@/components/Controls/RoleSwitches.vue'
 import FormShell from '@/components/FormShell.vue'
 import HeaderButton from '@/components/HeaderButton.vue'
@@ -69,6 +93,8 @@ import { useFormRoute } from '@/composables/useFormRoute'
 import { notifyMembersChanged } from '@/stores/members'
 import {
 	ROLE_ROWS,
+	canManageMembers,
+	grantableRoleRows,
 	noRoles,
 	type MemberRoleKey,
 } from '@/components/Settings/Members/members'
@@ -98,17 +124,15 @@ const isEdit = computed(() => props.memberID !== 'new')
 const { close } = useFormRoute({ name: 'MobileYou' })
 
 // Members.vue's Add button carried no gate of its own — the gate was on the
-// settings surface around it (UserDropdown.vue:59-62 for the desktop dialog),
-// and a URL goes through neither. `is_moderator` alone, deliberately: this is
-// the narrowest gate in settings and get_members/save_role both
-// `frappe.only_for("Moderator")`.
+// settings surface around it (UserDropdown.vue for the desktop dialog), and a
+// URL goes through neither.
 //
-// UX gate, not an authorization boundary — those two only_for calls are
-// (lms/lms/api.py:977 and :1851).
+// UX gate, not an authorization boundary — check_members_access in the
+// members API is.
 const refusal = computed(() => {
 	if ((window as Window & { read_only_mode?: boolean }).read_only_mode)
 		return __('This site is in read-only mode.')
-	if (!user.data?.is_moderator)
+	if (!canManageMembers(user.data))
 		return __('You are not permitted to manage members.')
 	return ''
 })
@@ -124,6 +148,9 @@ const member = reactive({
 	email: isEdit.value ? props.memberID : '',
 	first_name: '',
 	last_name: '',
+	organization: '',
+	designation: '',
+	rank: '',
 })
 
 const roles = reactive(noRoles())
@@ -200,6 +227,11 @@ const addMember = async () => {
 		toast.error(__('Email is required'))
 		return
 	}
+	// The server places an Organization Manager's members inside their organizations.
+	if (!user.data?.is_moderator && !member.organization) {
+		toast.error(__('Organization is required'))
+		return
+	}
 
 	submitting.value = true
 	try {
@@ -207,6 +239,11 @@ const addMember = async () => {
 			email: member.email.trim(),
 			first_name: member.first_name.trim() || undefined,
 			last_name: member.last_name.trim() || undefined,
+			profile: {
+				organization: member.organization || null,
+				designation: member.designation.trim() || null,
+				rank: member.rank.trim() || null,
+			},
 		})
 
 		await assignRoles(created.name)

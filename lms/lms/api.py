@@ -67,7 +67,13 @@ from lms.lms.doctype.course_lesson.course_lesson import save_progress
 from lms.lms.doctype.lms_certificate.lms_certificate import evaluates_certificate, get_latest_certificate
 from lms.lms.doctype.lms_certificate_evaluation.lms_certificate_evaluation import can_evaluate
 from lms.lms.html_sanitizer import sanitize_rich_text
-from lms.lms.permissions import is_site_administrator
+from lms.lms.permissions import (
+	can_manage_member,
+	can_manage_members,
+	is_site_administrator,
+	managed_organizations,
+	manages_every_member,
+)
 from lms.lms.sidebar import LEGACY_VISIBILITY_FIELDS, ROW_FIELDS, get_sidebar_rows
 from lms.lms.utils import (
 	LMS_ROLES,
@@ -117,6 +123,7 @@ def get_user_info():
 	user.is_student = not user.is_instructor and not user.is_moderator and not user.is_evaluator
 	user.is_fc_site = is_fc_site()
 	user.is_system_manager = "System Manager" in user.roles
+	user.is_organization_manager = "Organization Manager" in user.roles
 	# Someone signed in without an LMS role is treated as a guest.
 	user.has_lms_role = has_lms_role() or user.is_system_manager
 	user.sitename = frappe.local.site
@@ -1712,7 +1719,30 @@ def update_chapter_index(chapter: str, course: str, idx: int):
 # Matches SETTINGS_PAGE_LENGTH in the frontend, which pages `start` by this.
 MEMBERS_PAGE_LENGTH = 13
 
-MEMBER_FIELDS = ["name", "full_name", "user_image", "username", "last_active"]
+MEMBER_FIELDS = [
+	"name",
+	"full_name",
+	"user_image",
+	"username",
+	"last_active",
+	"enabled",
+	"organization",
+	"designation",
+	"rank",
+]
+
+MEMBER_STATUSES = ("Active", "Disabled")
+
+
+def check_members_access():
+	"""Moderators manage every member; an Organization Manager, the people of their organizations."""
+	if not can_manage_members():
+		frappe.throw(_("You are not permitted to manage members."), frappe.PermissionError)
+
+
+def check_member_in_scope(member: str):
+	if not can_manage_member(member):
+		frappe.throw(_("You are not permitted to manage {0}.").format(member), frappe.PermissionError)
 
 
 def member_roles(member: str) -> list[str]:
@@ -1735,7 +1765,7 @@ def get_member(member: str):
 	cannot answer "give me this one row": a member past the first page, or a
 	disabled one, came back empty and left the form unable to save.
 	"""
-	frappe.only_for(["Moderator"])
+	check_members_access()
 
 	if not isinstance(member, str):
 		frappe.throw(_("Invalid member."), frappe.ValidationError)
@@ -1747,14 +1777,23 @@ def get_member(member: str):
 	row = frappe.db.get_value("User", member, MEMBER_FIELDS, as_dict=True)
 	if not row:
 		frappe.throw(_("Member {0} does not exist.").format(member), frappe.DoesNotExistError)
+	check_member_in_scope(member)
 
 	row.roles = member_roles(row.name)
 	return row
 
 
 @frappe.whitelist()
-def get_members(start: int = 0, search: str = None, role: str = "All", limit_page_length: int | str = None):
-	frappe.only_for(["Moderator"])
+def get_members(
+	start: int = 0,
+	search: str = None,
+	role: str = "All",
+	limit_page_length: int | str = None,
+	status: str = "Active",
+):
+	check_members_access()
+	if status not in MEMBER_STATUSES:
+		frappe.throw(_("Invalid status filter."), frappe.ValidationError)
 
 	lms_roles = LMS_ROLES
 	if not isinstance(role, str) or role not in (["All"] + lms_roles):
@@ -1763,9 +1802,14 @@ def get_members(start: int = 0, search: str = None, role: str = "All", limit_pag
 		frappe.throw(_("Invalid search query."), frappe.ValidationError)
 
 	filters = [
-		["enabled", "=", 1],
+		["enabled", "=", 1 if status == "Active" else 0],
 		["name", "not in", ["Administrator", "Guest"]],
 	]
+	if not manages_every_member():
+		organizations = managed_organizations()
+		if not organizations:
+			return []
+		filters.append(["organization", "in", organizations])
 	or_filters = {}
 
 	if role != "All":
@@ -2881,7 +2925,18 @@ def get_certification_details(course: str) -> dict:
 	}
 
 
-MEMBER_PROFILE_FIELDS = ("first_name", "last_name", "username", "phone", "mobile_no", "location", "bio")
+MEMBER_PROFILE_FIELDS = (
+	"first_name",
+	"last_name",
+	"username",
+	"phone",
+	"mobile_no",
+	"location",
+	"bio",
+	"organization",
+	"designation",
+	"rank",
+)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -2894,7 +2949,7 @@ def add_member(
 	"""Add a website user from the members screens. Moderators have no create on
 	User, so this is the one way in, and it only ever makes a website user. The
 	profile is saved in the same request, so a failed save adds nobody."""
-	frappe.only_for("Moderator")
+	check_members_access()
 	# Lowercased as User names are, so the duplicate check below matches them.
 	email = (email or "").strip().lower()
 	# validate_email_address returns every valid address it finds, joined by
@@ -2923,7 +2978,7 @@ def add_member(
 def update_member(member: str, profile: dict | str) -> dict:
 	"""Save the profile fields the members screen edits. Email, password and the
 	rest of the account stay out of reach; roles go through save_role."""
-	frappe.only_for("Moderator")
+	check_members_access()
 	if (
 		not isinstance(member, str)
 		or member in ("Administrator", "Guest")
@@ -2931,6 +2986,7 @@ def update_member(member: str, profile: dict | str) -> dict:
 	):
 		frappe.throw(_("Member {0} does not exist.").format(member), frappe.DoesNotExistError)
 	check_can_manage_member(member)
+	check_member_in_scope(member)
 
 	user = frappe.get_doc("User", member)
 	set_member_profile(user, profile)
@@ -2944,6 +3000,10 @@ def set_member_profile(user, profile: dict | str | None):
 	profile = frappe.parse_json(profile) or {}
 	user.update({field: profile[field] for field in MEMBER_PROFILE_FIELDS if field in profile})
 	user.bio = sanitize_rich_text(user.bio)
+	# An Organization Manager places people only inside the organizations they manage, so
+	# they can neither hand a member away nor add one they could not see afterwards.
+	if not manages_every_member() and user.organization not in managed_organizations():
+		frappe.throw(_("Choose an organization you manage."), frappe.PermissionError)
 
 
 def check_can_manage_member(member: str):
@@ -2954,8 +3014,12 @@ def check_can_manage_member(member: str):
 
 @frappe.whitelist(methods=["POST"])
 def save_role(user: str, role: str, value: int):
-	frappe.only_for("Moderator")
+	check_members_access()
 	if role not in LMS_ROLES:
+		frappe.throw(_("You do not have permission to modify this role."), frappe.PermissionError)
+	check_member_in_scope(user)
+	# Staff roles reach past an organization, so only a Moderator grants them.
+	if role != "LMS Student" and not manages_every_member():
 		frappe.throw(_("You do not have permission to modify this role."), frappe.PermissionError)
 
 	if role == "Batch Evaluator":
@@ -3016,6 +3080,23 @@ def delete_member(user: str):
 	frappe.delete_doc("User", user, ignore_permissions=True)
 	frappe.clear_cache(user=user)
 	return True
+
+
+@frappe.whitelist(methods=["POST"])
+def set_member_enabled(member: str, enabled: int):
+	"""Disable a member who has left, or bring them back. Their records stay."""
+	check_members_access()
+	if not isinstance(member, str) or member in ("Administrator", "Guest", frappe.session.user):
+		frappe.throw(_("This user cannot be changed."), frappe.PermissionError)
+	if not frappe.db.exists("User", member):
+		frappe.throw(_("Member {0} does not exist.").format(member), frappe.DoesNotExistError)
+	check_can_manage_member(member)
+	check_member_in_scope(member)
+	user = frappe.get_doc("User", member)
+	user.enabled = 1 if cint(enabled) else 0
+	# nosemgrep: lms-unjustified-ignore-permissions - scoped above; only `enabled` changes, never a System Manager's
+	user.save(ignore_permissions=True)
+	return {"name": user.name, "enabled": user.enabled}
 
 
 @frappe.whitelist(methods=["POST"])

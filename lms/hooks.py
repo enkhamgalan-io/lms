@@ -128,9 +128,13 @@ permission_query_conditions = {
 	"LMS Quiz Submission": "lms.lms.permissions.quiz_submission_query_conditions",
 	"LMS Assignment Submission": "lms.lms.permissions.assignment_submission_query_conditions",
 	"LMS Programming Exercise Submission": "lms.lms.permissions.programming_exercise_submission_query_conditions",
+	"User": "lms.lms.permissions.user_query_conditions",
+	"LMS Organization": "lms.lms.permissions.organization_query_conditions",
 }
 
 has_permission = {
+	"User": "lms.lms.permissions.user_has_permission",
+	"LMS Organization": "lms.lms.permissions.organization_has_permission",
 	"LMS Course": "lms.lms.permissions.course_has_permission",
 	"Course Chapter": "lms.lms.permissions.chapter_has_permission",
 	"LMS Course Progress": "lms.lms.permissions.course_record_has_permission",

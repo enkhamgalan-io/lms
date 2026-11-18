@@ -60,6 +60,7 @@ def create_lms_roles():
 	create_moderator_role()
 	create_evaluator_role()
 	create_lms_student_role()
+	create_organization_manager_role()
 
 
 def create_course_creator_role():
@@ -119,6 +120,15 @@ def create_lms_student_role():
 				"desk_access": 0,
 			}
 		)
+		role.save()
+
+
+def create_organization_manager_role():
+	if frappe.db.exists("Role", "Organization Manager"):
+		frappe.db.set_value("Role", "Organization Manager", "desk_access", 0)
+	else:
+		role = frappe.new_doc("Role")
+		role.update({"role_name": "Organization Manager", "home_page": "", "desk_access": 0})
 		role.save()
 
 
@@ -198,6 +208,8 @@ def give_lms_roles_to_admin():
 def give_user_list_permission():
 	doctype = "User"
 	create_role(doctype, "Moderator", 0)
+	# Read only; lms.lms.permissions narrows it to the people of the organizations they manage.
+	create_role(doctype, "Organization Manager", 0)
 	# Select resolves User links and pickers without opening anyone's profile.
 	for role in ["Course Creator", "Batch Evaluator"]:
 		create_role(doctype, role, 0, read=0)
@@ -231,7 +243,7 @@ def create_role(doctype, role, permlevel, write=0, create=0, read=1):
 
 
 def delete_lms_roles():
-	roles = ["Course Creator", "Moderator", "Batch Evaluator", "LMS Student"]
+	roles = ["Course Creator", "Moderator", "Batch Evaluator", "LMS Student", "Organization Manager"]
 	for role in roles:
 		if frappe.db.exists("Role", role):
 			frappe.db.delete("Has Role", {"role": role})
