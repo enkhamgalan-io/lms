@@ -2481,6 +2481,9 @@ def get_quiz_with_questions(quiz: str) -> dict:
 		frappe.throw(_("You are not authorized to view this quiz."), frappe.PermissionError)
 
 	quiz_doc = enrich_schedule_payload(frappe.get_doc("LMS Quiz", quiz).as_dict())
+	if quiz_doc.get("quiz_type") in ("Survey", "Poll"):
+		# Nothing is right or wrong in an opinion, so there is nothing to check live.
+		quiz_doc["show_answers"] = 0
 	reason = quiz_doc.get("schedule_block_reason")
 
 	privileged = bool(PRIVILEGED_ROLES & set(frappe.get_roles()))

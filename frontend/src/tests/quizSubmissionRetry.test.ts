@@ -564,6 +564,49 @@ describe('Quiz.vue result', () => {
 		wrapper.unmount()
 	})
 
+	it('thanks the learner after a survey, with no verdict or marks', async () => {
+		const wrapper = await finish(
+			{ enable_proctoring: 0, quiz_type: 'Survey' },
+			{ submission: 'sub-1', quiz_type: 'Survey', summary: null }
+		)
+		;(wrapper.vm as any).submitQuiz()
+		await runDeferredSubmit()
+
+		expect(wrapper.text()).toContain('Thank you. Your answers have been saved.')
+		expect(wrapper.find('[data-testid="quiz-verdict"]').exists()).toBe(false)
+		expect(wrapper.text()).not.toContain('marks')
+		wrapper.unmount()
+	})
+
+	it('shows everyone’s answers after a poll', async () => {
+		const wrapper = await finish(
+			{ enable_proctoring: 0, quiz_type: 'Poll' },
+			{
+				submission: 'sub-1',
+				quiz_type: 'Poll',
+				summary: [
+					{
+						question: 'Q1',
+						question_detail: '<p>Tea or <b>coffee</b>?</p>',
+						responses: 4,
+						answers: [
+							{ answer: 'Tea', count: 3 },
+							{ answer: 'Coffee', count: 1 },
+						],
+					},
+				],
+			}
+		)
+		;(wrapper.vm as any).submitQuiz()
+		await runDeferredSubmit()
+
+		const summary = wrapper.get('[data-testid="poll-summary"]')
+		expect(summary.text()).toContain('Tea or coffee?')
+		expect(summary.text()).not.toContain('<b>')
+		expect(summary.find('[style*="width: 75%"]').exists()).toBe(true)
+		wrapper.unmount()
+	})
+
 	it('sends a learner who hit the violation cap to the instructor, not a retry', async () => {
 		const wrapper = await finish()
 		const vm = wrapper.vm as any

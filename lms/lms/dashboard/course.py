@@ -53,6 +53,7 @@ from lms.lms.dashboard.common import (
 	_weekly_counts,
 	_weekly_values,
 	_windowed_counts,
+	scored_quiz,
 )
 from lms.lms.doctype.lms_certificate.lms_certificate import (
 	get_default_certificate_template,
@@ -763,7 +764,12 @@ def _quiz_stats(course: str) -> list[dict]:
 	Quiz = frappe.qb.DocType("LMS Quiz")
 	Submission = frappe.qb.DocType("LMS Quiz Submission")
 	attempts = _enrolled_only(frappe.qb.from_(Submission), Submission).where(Submission.course == course)
-	own = frappe.qb.from_(Quiz).select(Quiz.name, Quiz.title).where(Quiz.course == course).run(as_dict=True)
+	own = (
+		frappe.qb.from_(Quiz)
+		.select(Quiz.name, Quiz.title)
+		.where((Quiz.course == course) & scored_quiz(Quiz))
+		.run(as_dict=True)
+	)
 	return _quiz_rows(attempts, Submission, own)
 
 

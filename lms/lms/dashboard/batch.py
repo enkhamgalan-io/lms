@@ -51,6 +51,7 @@ from lms.lms.dashboard.common import (
 	_validate_time_frame,
 	_weekly_counts,
 	_windowed_counts,
+	scored_quiz,
 )
 from lms.lms.doctype.lms_batch_feedback.lms_batch_feedback import feedback_rows, feedback_summary
 from lms.lms.feedback import validate_feedback_page
@@ -195,7 +196,7 @@ def get_batch_assessment_stats(batch: str) -> dict:
 	own_quizzes = (
 		frappe.qb.from_(Quiz)
 		.select(Quiz.name, Quiz.title)
-		.where(_isin(Quiz.name, context.quizzes))
+		.where(_isin(Quiz.name, context.quizzes) & scored_quiz(Quiz))
 		.run(as_dict=True)
 	)
 	own_assignments = (
@@ -699,7 +700,7 @@ def _student_assessments(context: frappe._dict, member: str) -> list[dict]:
 			fn.Count(QuizSubmission.name).as_("attempts"),
 			fn.Max(QuizSubmission.creation).as_("at"),
 		)
-		.where(_isin(Quiz.name, context.quizzes))
+		.where(_isin(Quiz.name, context.quizzes) & scored_quiz(Quiz))
 		.groupby(Quiz.name, Quiz.title)
 		.run(as_dict=True)
 	)

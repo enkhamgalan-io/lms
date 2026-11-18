@@ -51,16 +51,17 @@ class TestAssessmentSubmissionScope(BaseTestUtils):
 	def test_both_halves_are_registered_for_all_three_submission_doctypes(self):
 		from lms import hooks
 
-		for doctype in (
-			"LMS Quiz Submission",
-			"LMS Assignment Submission",
-			"LMS Programming Exercise Submission",
+		# Quizzes go through a wrapper that hides anonymous answers, then this same rule.
+		for doctype, hook in (
+			("LMS Quiz Submission", "lms.lms.permissions.quiz_submission_has_permission"),
+			("LMS Assignment Submission", "lms.lms.permissions.assessment_submission_has_permission"),
+			(
+				"LMS Programming Exercise Submission",
+				"lms.lms.permissions.assessment_submission_has_permission",
+			),
 		):
 			with self.subTest(doctype=doctype):
-				self.assertEqual(
-					hooks.has_permission.get(doctype),
-					"lms.lms.permissions.assessment_submission_has_permission",
-				)
+				self.assertEqual(hooks.has_permission.get(doctype), hook)
 				self.assertIsNotNone(hooks.permission_query_conditions.get(doctype))
 
 	def test_the_owning_member_reads_it_and_an_outsider_does_not(self):

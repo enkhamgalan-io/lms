@@ -89,7 +89,29 @@ class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
 		self.validate_limit()
 		self.calculate_total_marks()
 		self.validate_open_ended_questions()
+		self.validate_quiz_type()
 		validate_schedule_fields(self)
+
+	def validate_quiz_type(self):
+		"""A scored quiz cannot hold a question with no right answer; a survey or poll is
+		never scored, so it takes any question and needs no pass mark."""
+		self.quiz_type = self.quiz_type or "Quiz"
+		if self.quiz_type != "Quiz":
+			self.passing_percentage = 0
+			return
+		self.is_anonymous = 0
+		questions = [row.question for row in self.questions]
+		opinions = (
+			frappe.get_all("LMS Question", {"name": ["in", questions], "no_correct_answer": 1}, pluck="name")
+			if questions
+			else []
+		)
+		if opinions:
+			frappe.throw(
+				_(
+					"A quiz is scored, so it cannot hold questions with no correct answer: {0}. Make it a survey or poll."
+				).format(comma_and(opinions))
+			)
 
 	def validate_duplicate_questions(self):
 		questions = [row.question for row in self.questions]
@@ -291,6 +313,7 @@ def submit_quiz(
 			"schedule_start",
 			"schedule_end",
 			"single_session",
+			"quiz_type",
 		],
 		as_dict=1,
 	)
@@ -338,6 +361,14 @@ def submit_quiz(
 	if quiz_details.single_session:
 		frappe.cache.delete_value(_session_key(quiz, member))
 
+	if quiz_details.quiz_type in OPINION_TYPES:
+		# Nothing to score: a survey thanks the learner, a poll shows the answers so far.
+		return {
+			"submission": submission.name,
+			"quiz_type": quiz_details.quiz_type,
+			"summary": quiz_summary(quiz) if quiz_details.quiz_type == "Poll" else None,
+		}
+
 	return {
 		"score": submission.score,
 		"score_out_of": submission.score_out_of,
@@ -347,6 +378,64 @@ def submit_quiz(
 		"is_open_ended": is_open_ended,
 		**_answer_counts(data["results"], _attempt_size(quiz_details)),
 	}
+
+
+OPINION_TYPES = ("Survey", "Poll")
+
+
+def quiz_summary(quiz: str) -> list[dict]:
+	"""Each question of the quiz with how many submissions gave each answer. Counts only:
+	who gave them is not part of it, so an anonymous survey can be summed up too."""
+	Result = frappe.qb.DocType("LMS Quiz Result")
+	Submission = frappe.qb.DocType("LMS Quiz Submission")
+	rows = (
+		frappe.qb.from_(Result)
+		.join(Submission)
+		.on(Submission.name == Result.parent)
+		.select(Result.question_name, Result.question_type, Result.answer)
+		.where((Submission.quiz == quiz) & (Result.parenttype == "LMS Quiz Submission"))
+		.run(as_dict=True)
+	)
+	questions = frappe.get_all(
+		"LMS Quiz Question", {"parent": quiz}, ["question", "question_detail"], order_by="idx"
+	)
+	counts: dict[str, dict[str, int]] = {row.question: {} for row in questions}
+	for row in rows:
+		tally = counts.setdefault(row.question_name, {})
+		# shortcut: choices are stored joined with ", ", so an option that itself holds
+		# ", " is split apart; store answers as a list to count those right.
+		answers = row.answer.split(", ") if row.question_type == "Choices" else [row.answer]
+		for answer in filter(None, (cstr(a).strip() for a in answers)):
+			tally[answer] = tally.get(answer, 0) + 1
+	return [
+		{
+			"question": row.question,
+			"question_detail": row.question_detail,
+			"answers": sorted(
+				({"answer": answer, "count": count} for answer, count in counts[row.question].items()),
+				key=lambda item: -item["count"],
+			),
+			"responses": frappe.db.count("LMS Quiz Submission", {"quiz": quiz}),
+		}
+		for row in questions
+	]
+
+
+@frappe.whitelist()
+def get_quiz_summary(quiz: str) -> list[dict]:
+	"""The summed-up answers of a survey or poll: for its staff, and for anyone who has
+	answered a poll."""
+	from lms.lms.permissions import can_administer_assessment
+
+	if not isinstance(quiz, str) or not frappe.db.exists("LMS Quiz", quiz):
+		frappe.throw(_("Invalid quiz."), frappe.ValidationError)
+	quiz_type = frappe.db.get_value("LMS Quiz", quiz, "quiz_type")
+	answered_poll = quiz_type == "Poll" and frappe.db.exists(
+		"LMS Quiz Submission", {"quiz": quiz, "member": frappe.session.user}
+	)
+	if not answered_poll and not can_administer_assessment("LMS Quiz", quiz):
+		frappe.throw(_("You cannot see the answers to this quiz."), frappe.PermissionError)
+	return quiz_summary(quiz)
 
 
 def _attempt_size(quiz_details: dict) -> int:
@@ -888,6 +977,8 @@ def check_answer(quiz: str, question: str, question_type: str, answers: str):
 		frappe.throw(_("Question not found in this quiz."), frappe.PermissionError)
 	# Otherwise live checking reads out the answers to questions left out of this draw.
 	_assert_drawn(quiz, frappe.session.user, [question])
+	if frappe.db.get_value("LMS Quiz", quiz, "quiz_type") in OPINION_TYPES:
+		frappe.throw(_("A survey or poll has no right answers to check."), frappe.ValidationError)
 
 	if not is_admin and not frappe.db.get_value("LMS Quiz", quiz, "show_answers"):
 		frappe.throw(

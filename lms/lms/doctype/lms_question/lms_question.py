@@ -37,8 +37,13 @@ def validate_correct_answers(question):
 	if question.type == "Choices":
 		validate_duplicate_options(question)
 		validate_minimum_options(question)
-		validate_correct_options(question)
-	elif question.type == "User Input":
+		if question.no_correct_answer:
+			# An opinion question: no option is right, and `multiple` stays the author's.
+			for field in QUESTION_CORRECTNESS_FIELDS:
+				question.set(field, 0)
+		else:
+			validate_correct_options(question)
+	elif question.type == "User Input" and not question.no_correct_answer:
 		validate_possible_answer(question)
 
 

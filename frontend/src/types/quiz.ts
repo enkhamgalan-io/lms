@@ -36,6 +36,8 @@ export interface QuizDetails {
 	limit_questions_to?: number
 	shuffle_options?: 0 | 1
 	single_session?: 0 | 1
+	quiz_type?: 'Quiz' | 'Survey' | 'Poll'
+	is_anonymous?: 0 | 1
 	// Sent for a single-session quiz; only the window holding it may submit.
 	attempt_token?: string
 	enable_proctoring?: 0 | 1
@@ -77,6 +79,17 @@ export interface QuizSubmissionResult {
 	correct?: number
 	wrong?: number
 	unanswered?: number
+	/** Set for a survey or poll, which comes back with no score. */
+	quiz_type?: 'Survey' | 'Poll'
+	/** A poll's answers so far, summed up per question. */
+	summary?: QuizSummaryQuestion[] | null
+}
+
+export interface QuizSummaryQuestion {
+	question: string
+	question_detail: string
+	answers: { answer: string; count: number }[]
+	responses: number
 }
 
 /** 1 correct, 2 partially correct, 0 wrong; undefined for an untouched option. */

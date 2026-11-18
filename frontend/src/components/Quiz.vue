@@ -544,8 +544,41 @@
 					<h2 ref="summaryHeading" tabindex="-1" class="sr-only">
 						{{ __('Quiz result') }}
 					</h2>
+					<template v-if="quizSubmission.data.quiz_type">
+						<p class="text-p-base text-ink-gray-7">
+							{{ __('Thank you. Your answers have been saved.') }}
+						</p>
+						<div
+							v-for="question in quizSubmission.data.summary ?? []"
+							:key="question.question"
+							class="space-y-1.5"
+							data-testid="poll-summary"
+						>
+							<div class="text-p-sm-medium text-ink-gray-8">
+								{{ plainText(question.question_detail) }}
+							</div>
+							<div
+								v-for="answer in question.answers"
+								:key="answer.answer"
+								class="flex items-center gap-2 text-sm text-ink-gray-7"
+							>
+								<span class="w-32 shrink-0 truncate">{{ answer.answer }}</span>
+								<span class="h-2 flex-1 rounded bg-surface-gray-2">
+									<span
+										class="block h-2 rounded bg-surface-gray-7"
+										:style="{
+											width: `${share(answer.count, question.responses)}%`,
+										}"
+									/>
+								</span>
+								<span class="w-8 text-end tabular-nums">{{
+									answer.count
+								}}</span>
+							</div>
+						</div>
+					</template>
 					<p
-						v-if="quizSubmission.data.is_open_ended"
+						v-else-if="quizSubmission.data.is_open_ended"
 						class="text-p-base text-ink-gray-7"
 					>
 						{{
@@ -1892,6 +1925,14 @@ const resetQuiz = () => {
 }
 
 // The server draws each attempt afresh, so a retake needs the new draw.
+// A poll's question text is author HTML; the summary shows it as plain words.
+const plainText = (html: string | null | undefined): string =>
+	new DOMParser().parseFromString(html ?? '', 'text/html').body.textContent ??
+	''
+
+const share = (count: number, responses: number): number =>
+	responses ? Math.round((count * 100) / responses) : 0
+
 const retakeQuiz = (): void => {
 	resetQuiz()
 	quiz.reload()
