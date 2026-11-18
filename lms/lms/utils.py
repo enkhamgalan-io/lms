@@ -2504,6 +2504,9 @@ def get_quiz_with_questions(quiz: str) -> dict:
 		frappe.throw(_("You are not authorized to view this quiz."), frappe.PermissionError)
 
 	quiz_doc = enrich_schedule_payload(frappe.get_doc("LMS Quiz", quiz).as_dict())
+	if quiz_doc.get("quiz_type") in ("Survey", "Poll"):
+		# Nothing is right or wrong in an opinion, so there is nothing to check live.
+		quiz_doc["show_answers"] = 0
 	reason = quiz_doc.get("schedule_block_reason")
 
 	privileged = bool(PRIVILEGED_ROLES & set(frappe.get_roles()))
@@ -2515,9 +2518,18 @@ def get_quiz_with_questions(quiz: str) -> dict:
 		# detail map keeps prompt/options out of the response entirely.
 		quiz_doc["questions"] = []
 	else:
-		question_names = [
-			row.get("question") for row in quiz_doc.get("questions") or [] if row.get("question")
-		]
+		from lms.lms.doctype.lms_quiz.lms_quiz import (
+			attempt_question_names,
+			open_quiz_session,
+			option_order,
+		)
+
+		member = frappe.session.user
+		question_names = attempt_question_names(quiz, member)
+		rows_by_question = {row.get("question"): row for row in quiz_doc.get("questions") or []}
+		quiz_doc["questions"] = [rows_by_question[name] for name in question_names]
+		if quiz_doc.get("single_session"):
+			quiz_doc["attempt_token"] = open_quiz_session(quiz, member)
 		if question_names:
 			fields = [
 				"name",
@@ -2536,6 +2548,9 @@ def get_quiz_with_questions(quiz: str) -> dict:
 				ignore_permissions=True,
 			)
 			questions_by_name = {row["name"]: _rewrite_question_private_media(row) for row in rows}
+			if quiz_doc.get("shuffle_options"):
+				for name, row in questions_by_name.items():
+					row["option_order"] = option_order(quiz, member, name)
 			for child in quiz_doc.get("questions") or []:
 				if child.get("question_detail"):
 					child["question_detail"] = rewrite_private_media(

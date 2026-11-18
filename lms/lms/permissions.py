@@ -1197,7 +1197,32 @@ SUBMISSION_ASSESSMENT_FIELDS = {
 
 
 def quiz_submission_query_conditions(user: str | None = None) -> str:
-	return _assessment_submission_query_conditions("LMS Quiz Submission", user)
+	user = user or frappe.session.user
+	condition = _assessment_submission_query_conditions("LMS Quiz Submission", user)
+	anonymous = [] if is_site_administrator(user) else _anonymous_quizzes()
+	if not anonymous:
+		return condition
+	submission = frappe.qb.DocType("LMS Quiz Submission")
+	own_or_named = Bracket(
+		submission.quiz.notin(anonymous) | (submission.member == LiteralValue(frappe.db.escape(user)))
+	)
+	return f"({condition}) and {_render(own_or_named)}" if condition else _render(own_or_named)
+
+
+def quiz_submission_has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+	"""An anonymous survey's answers are their member's alone: staff, Moderators among
+	them, see them only summed up (lms_quiz.get_quiz_summary). Site administrators keep
+	the row, as they keep the database."""
+	user = user or frappe.session.user
+	if doc is not None and doc.get("name") and not doc.get("__islocal") and not is_site_administrator(user):
+		stored = frappe.db.get_value("LMS Quiz Submission", doc.name, ["member", "quiz"], as_dict=True)
+		if stored and stored.member != user and stored.quiz in _anonymous_quizzes():
+			return False
+	return assessment_submission_has_permission(doc, ptype, user)
+
+
+def _anonymous_quizzes() -> list[str]:
+	return frappe.get_all("LMS Quiz", {"is_anonymous": 1}, pluck="name")
 
 
 def assignment_submission_query_conditions(user: str | None = None) -> str:

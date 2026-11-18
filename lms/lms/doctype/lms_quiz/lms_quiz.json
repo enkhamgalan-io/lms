@@ -8,6 +8,8 @@
  "engine": "InnoDB",
  "field_order": [
   "title",
+  "quiz_type",
+  "is_anonymous",
   "authors",
   "max_attempts",
   "show_answers",
@@ -24,6 +26,8 @@
   "section_break_tzbu",
   "shuffle_questions",
   "limit_questions_to",
+  "shuffle_options",
+  "single_session",
   "column_break_clsh",
   "enable_negative_marking",
   "marks_to_cut",
@@ -41,6 +45,23 @@
    "in_list_view": 1,
    "label": "Title",
    "reqd": 1
+  },
+  {
+   "default": "Quiz",
+   "description": "A survey or poll collects opinions: it is not scored, and taking it is enough to complete its lesson. A poll shows everyone's answers once submitted.",
+   "fieldname": "quiz_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Quiz\nSurvey\nPoll"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.quiz_type != 'Quiz'",
+   "description": "Staff see the answers only added up, never who gave them.",
+   "fieldname": "is_anonymous",
+   "fieldtype": "Check",
+   "label": "Anonymous"
   },
   {
    "fieldname": "questions",
@@ -130,6 +151,19 @@
    "label": "Limit Questions To"
   },
   {
+   "default": "0",
+   "fieldname": "shuffle_options",
+   "fieldtype": "Check",
+   "label": "Shuffle Options"
+  },
+  {
+   "default": "0",
+   "description": "A learner can take the quiz in one window at a time. Opening it again ends the earlier window's attempt.",
+   "fieldname": "single_session",
+   "fieldtype": "Check",
+   "label": "Single Session"
+  },
+  {
    "fieldname": "section_break_tzbu",
    "fieldtype": "Section Break"
   },
@@ -204,7 +238,7 @@
    "link_fieldname": "quiz"
   }
  ],
- "modified": "2026-09-08 02:30:00.000000",
+ "modified": "2026-11-18 00:00:04.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Quiz",

@@ -285,6 +285,31 @@
 					<h2 class="text-lg font-semibold text-ink-gray-9">
 						{{ __('Settings') }}
 					</h2>
+					<FormControl
+						v-model="doc.quiz_type"
+						type="select"
+						:label="__('Type')"
+						:options="[
+							{ label: __('Quiz'), value: 'Quiz' },
+							{ label: __('Survey'), value: 'Survey' },
+							{ label: __('Poll'), value: 'Poll' },
+						]"
+						:description="
+							__(
+								'A survey or poll is not scored; taking it completes its lesson. A poll shows everyone\'s answers once submitted.'
+							)
+						"
+						variant="outline"
+					/>
+					<BooleanSwitch
+						v-if="doc.quiz_type && doc.quiz_type !== 'Quiz'"
+						v-model="doc.is_anonymous"
+						size="sm"
+						:label="__('Anonymous')"
+						:description="
+							__('Staff see the answers only added up, never who gave them.')
+						"
+					/>
 					<BooleanSwitch
 						v-model="doc.show_answers"
 						size="sm"
@@ -312,6 +337,24 @@
 						v-model="doc.limit_questions_to"
 						:label="__('Limit Questions To')"
 						variant="outline"
+					/>
+					<BooleanSwitch
+						v-model="doc.shuffle_options"
+						size="sm"
+						:label="__('Shuffle Options')"
+						:description="
+							__('Randomize the order of answer options for each attempt.')
+						"
+					/>
+					<BooleanSwitch
+						v-model="doc.single_session"
+						size="sm"
+						:label="__('Single Session')"
+						:description="
+							__(
+								'Allow the quiz in one window at a time. Opening it again ends the earlier window.'
+							)
+						"
 					/>
 					<BooleanSwitch
 						v-model="doc.enable_negative_marking"

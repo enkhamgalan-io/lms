@@ -1,8 +1,11 @@
 # Copyright (c) 2021, FOSS United and contributors
 # For license information, please see license.txt
 
+import hashlib
+import hmac
 import json
 import os
+import random
 import re
 import warnings
 from binascii import Error as BinasciiError
@@ -23,6 +26,7 @@ from frappe.utils import (
 )
 from frappe.utils.file_manager import safe_b64decode
 from frappe.utils.html_utils import sanitize_html
+from frappe.utils.password import get_encryption_key
 
 # fuzzywuzzy warns on import unless python-Levenshtein is installed. That
 # package scores differently from difflib and would change which answers pass.
@@ -67,6 +71,8 @@ MAX_VIOLATION_FRAME_BYTES = 250 * 1024
 # Per attempt, not per event: an attempt that trips two hundred times does not need two
 # hundred stills to show what happened.
 MAX_VIOLATION_FRAMES = 40
+# Longer than any attempt runs; a window older than this no longer holds the quiz.
+QUIZ_SESSION_SECONDS = 12 * 60 * 60
 
 
 class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
@@ -83,7 +89,29 @@ class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
 		self.validate_limit()
 		self.calculate_total_marks()
 		self.validate_open_ended_questions()
+		self.validate_quiz_type()
 		validate_schedule_fields(self)
+
+	def validate_quiz_type(self):
+		"""A scored quiz cannot hold a question with no right answer; a survey or poll is
+		never scored, so it takes any question and needs no pass mark."""
+		self.quiz_type = self.quiz_type or "Quiz"
+		if self.quiz_type != "Quiz":
+			self.passing_percentage = 0
+			return
+		self.is_anonymous = 0
+		questions = [row.question for row in self.questions]
+		opinions = (
+			frappe.get_all("LMS Question", {"name": ["in", questions], "no_correct_answer": 1}, pluck="name")
+			if questions
+			else []
+		)
+		if opinions:
+			frappe.throw(
+				_(
+					"A quiz is scored, so it cannot hold questions with no correct answer: {0}. Make it a survey or poll."
+				).format(comma_and(opinions))
+			)
 
 	def validate_duplicate_questions(self):
 		questions = [row.question for row in self.questions]
@@ -154,6 +182,72 @@ class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
 			return result[0]
 
 
+def _attempt_seed(quiz: str, member: str) -> bytes:
+	"""Fixed for one attempt and fresh for the next, so a reload draws the same questions
+	and only a submission draws new ones. Keyed by the site secret, so a learner cannot
+	work the draw out ahead."""
+	attempt = frappe.db.count("LMS Quiz Submission", {"quiz": quiz, "member": member})
+	message = f"{quiz}\0{member}\0{attempt}".encode()
+	return hmac.new(get_encryption_key().encode(), message, hashlib.sha256).digest()
+
+
+def attempt_question_names(quiz: str, member: str) -> list[str]:
+	"""The questions one attempt shows, in the order it shows them. Drawn here rather than
+	in the page, so a limited quiz shows no learner the questions left out of their draw."""
+	shuffle, limit = frappe.db.get_value("LMS Quiz", quiz, ["shuffle_questions", "limit_questions_to"])
+	names = frappe.get_all(
+		"LMS Quiz Question",
+		filters={"parent": quiz, "parenttype": "LMS Quiz"},
+		pluck="question",
+		order_by="idx",
+	)
+	# A row whose question was deleted cannot be shown, so it must not take a place in the draw.
+	existing = set(frappe.get_all("LMS Question", filters={"name": ["in", names]}, pluck="name"))
+	names = [name for name in names if name in existing]
+	if not shuffle:
+		return names
+	random.Random(_attempt_seed(quiz, member)).shuffle(names)
+	return names[: cint(limit)] if cint(limit) else names
+
+
+def option_order(quiz: str, member: str, question: str) -> list[int]:
+	"""The option numbers of a question in the order this attempt shows them."""
+	order = list(range(1, len(QUESTION_OPTION_FIELDS) + 1))
+	random.Random(_attempt_seed(quiz, member) + question.encode()).shuffle(order)
+	return order
+
+
+def _session_key(quiz: str, member: str) -> str:
+	return f"lms:quiz_session:{quiz}:{member}"
+
+
+def open_quiz_session(quiz: str, member: str) -> str:
+	"""Start the window a single-session quiz may be submitted from, ending any earlier one."""
+	token = frappe.generate_hash(length=20)
+	frappe.cache.set_value(_session_key(quiz, member), token, expires_in_sec=QUIZ_SESSION_SECONDS)
+	return token
+
+
+def _assert_quiz_session(quiz: str, member: str, token: str | None) -> None:
+	# shortcut: the window lives in Redis, so a flushed cache lets any window submit; move it
+	# to the database if the lock must survive a cache restart.
+	current = frappe.cache.get_value(_session_key(quiz, member))
+	if current and not hmac.compare_digest(current, cstr(token)):
+		frappe.throw(
+			_("This quiz was opened in another window. Submit it from there, or reload this page."),
+			frappe.ValidationError,
+		)
+
+
+def _assert_drawn(quiz: str, member: str, question_names: list[str]) -> None:
+	drawn = set(attempt_question_names(quiz, member))
+	if any(name not in drawn for name in question_names):
+		frappe.throw(
+			_("This attempt shows different questions now. Reload the page to continue."),
+			frappe.ValidationError,
+		)
+
+
 def set_total_marks(questions: list) -> int:
 	marks = 0
 	for question in questions:
@@ -190,6 +284,7 @@ def submit_quiz(
 	violation_count: int = 0,
 	submission_reason: str = "manual",
 	violation_events: str | None = None,
+	attempt_token: str | None = None,
 ):
 	if not isinstance(quiz, str):
 		frappe.throw(_("Invalid quiz."), frappe.ValidationError)
@@ -217,6 +312,8 @@ def submit_quiz(
 			"enable_scheduling",
 			"schedule_start",
 			"schedule_end",
+			"single_session",
+			"quiz_type",
 		],
 		as_dict=1,
 	)
@@ -234,6 +331,11 @@ def submit_quiz(
 		quiz_details.schedule_end,
 		label=quiz_details.title or _("This quiz"),
 	)
+
+	member = frappe.session.user
+	if quiz_details.single_session:
+		_assert_quiz_session(quiz, member, attempt_token)
+	_assert_drawn(quiz, member, [result["question_name"] for result in results])
 
 	data = process_results(results, quiz_details)
 	is_open_ended = data["is_open_ended"]
@@ -256,6 +358,16 @@ def submit_quiz(
 
 	_save_violation_events(submission.name, proctoring["events"])
 	_attach_answer_files(data["answer_files"], submission.name)
+	if quiz_details.single_session:
+		frappe.cache.delete_value(_session_key(quiz, member))
+
+	if quiz_details.quiz_type in OPINION_TYPES:
+		# Nothing to score: a survey thanks the learner, a poll shows the answers so far.
+		return {
+			"submission": submission.name,
+			"quiz_type": quiz_details.quiz_type,
+			"summary": quiz_summary(quiz) if quiz_details.quiz_type == "Poll" else None,
+		}
 
 	return {
 		"score": submission.score,
@@ -266,6 +378,64 @@ def submit_quiz(
 		"is_open_ended": is_open_ended,
 		**_answer_counts(data["results"], _attempt_size(quiz_details)),
 	}
+
+
+OPINION_TYPES = ("Survey", "Poll")
+
+
+def quiz_summary(quiz: str) -> list[dict]:
+	"""Each question of the quiz with how many submissions gave each answer. Counts only:
+	who gave them is not part of it, so an anonymous survey can be summed up too."""
+	Result = frappe.qb.DocType("LMS Quiz Result")
+	Submission = frappe.qb.DocType("LMS Quiz Submission")
+	rows = (
+		frappe.qb.from_(Result)
+		.join(Submission)
+		.on(Submission.name == Result.parent)
+		.select(Result.question_name, Result.question_type, Result.answer)
+		.where((Submission.quiz == quiz) & (Result.parenttype == "LMS Quiz Submission"))
+		.run(as_dict=True)
+	)
+	questions = frappe.get_all(
+		"LMS Quiz Question", {"parent": quiz}, ["question", "question_detail"], order_by="idx"
+	)
+	counts: dict[str, dict[str, int]] = {row.question: {} for row in questions}
+	for row in rows:
+		tally = counts.setdefault(row.question_name, {})
+		# shortcut: choices are stored joined with ", ", so an option that itself holds
+		# ", " is split apart; store answers as a list to count those right.
+		answers = row.answer.split(", ") if row.question_type == "Choices" else [row.answer]
+		for answer in filter(None, (cstr(a).strip() for a in answers)):
+			tally[answer] = tally.get(answer, 0) + 1
+	return [
+		{
+			"question": row.question,
+			"question_detail": row.question_detail,
+			"answers": sorted(
+				({"answer": answer, "count": count} for answer, count in counts[row.question].items()),
+				key=lambda item: -item["count"],
+			),
+			"responses": frappe.db.count("LMS Quiz Submission", {"quiz": quiz}),
+		}
+		for row in questions
+	]
+
+
+@frappe.whitelist()
+def get_quiz_summary(quiz: str) -> list[dict]:
+	"""The summed-up answers of a survey or poll: for its staff, and for anyone who has
+	answered a poll."""
+	from lms.lms.permissions import can_administer_assessment
+
+	if not isinstance(quiz, str) or not frappe.db.exists("LMS Quiz", quiz):
+		frappe.throw(_("Invalid quiz."), frappe.ValidationError)
+	quiz_type = frappe.db.get_value("LMS Quiz", quiz, "quiz_type")
+	answered_poll = quiz_type == "Poll" and frappe.db.exists(
+		"LMS Quiz Submission", {"quiz": quiz, "member": frappe.session.user}
+	)
+	if not answered_poll and not can_administer_assessment("LMS Quiz", quiz):
+		frappe.throw(_("You cannot see the answers to this quiz."), frappe.PermissionError)
+	return quiz_summary(quiz)
 
 
 def _attempt_size(quiz_details: dict) -> int:
@@ -805,6 +975,10 @@ def check_answer(quiz: str, question: str, question_type: str, answers: str):
 
 	if not frappe.db.exists("LMS Quiz Question", {"parent": quiz, "question": question}):
 		frappe.throw(_("Question not found in this quiz."), frappe.PermissionError)
+	# Otherwise live checking reads out the answers to questions left out of this draw.
+	_assert_drawn(quiz, frappe.session.user, [question])
+	if frappe.db.get_value("LMS Quiz", quiz, "quiz_type") in OPINION_TYPES:
+		frappe.throw(_("A survey or poll has no right answers to check."), frappe.ValidationError)
 
 	if not is_admin and not frappe.db.get_value("LMS Quiz", quiz, "show_answers"):
 		frappe.throw(

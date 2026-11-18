@@ -155,7 +155,7 @@ has_permission = {
 	"LMS Assignment": "lms.lms.permissions.assessment_has_permission",
 	"LMS Programming Exercise": "lms.lms.permissions.assessment_has_permission",
 	"LMS Question": "lms.lms.permissions.has_authored_content_permission",
-	"LMS Quiz Submission": "lms.lms.permissions.assessment_submission_has_permission",
+	"LMS Quiz Submission": "lms.lms.permissions.quiz_submission_has_permission",
 	"LMS Assignment Submission": "lms.lms.permissions.assessment_submission_has_permission",
 	"LMS Programming Exercise Submission": "lms.lms.permissions.assessment_submission_has_permission",
 }

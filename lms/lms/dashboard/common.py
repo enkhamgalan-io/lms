@@ -96,7 +96,7 @@ def _lesson_assessment_results(lessons: list[str], member: str) -> dict:
 			fn.Count(QuizSubmission.name).as_("attempts"),
 			fn.Max(QuizSubmission.creation).as_("at"),
 		)
-		.where(Quiz.name.isin(quiz_names))
+		.where(Quiz.name.isin(quiz_names) & scored_quiz(Quiz))
 		.groupby(Quiz.name, Quiz.title)
 		.run(as_dict=True)
 	}
@@ -423,13 +423,19 @@ def _windowed_counts(query, column, measure_of, now) -> dict:
 	return {"current": cint(current), "previous": cint(previous)}
 
 
+def scored_quiz(Quiz):
+	"""Only quizzes have scores to report. A survey or poll is summed up on its own, and an
+	anonymous one must not show who took it."""
+	return fn.Coalesce(Quiz.quiz_type, "Quiz") == "Quiz"
+
+
 def _quiz_rows(attempts, Submission, own: list) -> list[dict]:
 	"""Per quiz attempt counts from `attempts`, a query over quiz submissions, alongside `own`."""
 	Quiz = frappe.qb.DocType("LMS Quiz")
 	score = fn.Coalesce(Submission.percentage, 0)
 	attempted = (
-		attempts.left_join(Quiz)
-		.on(Quiz.name == Submission.quiz)
+		attempts.join(Quiz)
+		.on((Quiz.name == Submission.quiz) & scored_quiz(Quiz))
 		.select(
 			Submission.quiz.as_("name"),
 			fn.Max(fn.Coalesce(Quiz.title, Submission.quiz_title)).as_("title"),

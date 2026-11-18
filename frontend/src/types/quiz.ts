@@ -8,6 +8,8 @@ export type QuizQuestionDetails = {
 	question: string
 	type: QuizQuestionType
 	multiple?: 0 | 1
+	// Option numbers in display order, sent when the quiz shuffles its options.
+	option_order?: number[]
 } & {
 	[key: `option_${number}` | `explanation_${number}`]: string | null | undefined
 }
@@ -32,6 +34,12 @@ export interface QuizDetails {
 	show_submission_history?: 0 | 1
 	shuffle_questions?: 0 | 1
 	limit_questions_to?: number
+	shuffle_options?: 0 | 1
+	single_session?: 0 | 1
+	quiz_type?: 'Quiz' | 'Survey' | 'Poll'
+	is_anonymous?: 0 | 1
+	// Sent for a single-session quiz; only the window holding it may submit.
+	attempt_token?: string
 	enable_proctoring?: 0 | 1
 	max_violations: number
 	enable_negative_marking?: 0 | 1
@@ -71,6 +79,17 @@ export interface QuizSubmissionResult {
 	correct?: number
 	wrong?: number
 	unanswered?: number
+	/** Set for a survey or poll, which comes back with no score. */
+	quiz_type?: 'Survey' | 'Poll'
+	/** A poll's answers so far, summed up per question. */
+	summary?: QuizSummaryQuestion[] | null
+}
+
+export interface QuizSummaryQuestion {
+	question: string
+	question_detail: string
+	answers: { answer: string; count: number }[]
+	responses: number
 }
 
 /** 1 correct, 2 partially correct, 0 wrong; undefined for an untouched option. */
