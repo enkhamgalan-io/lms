@@ -16,6 +16,9 @@
   "column_break_4",
   "allow_self_enrollment",
   "organizations",
+  "quiz_completion",
+  "assignment_completion",
+  "programming_exercise_completion",
   "start_time",
   "end_time",
   "timezone",
@@ -328,6 +331,27 @@
    "options": "LMS Visible Organization"
   },
   {
+   "description": "Empty follows the site setting and then the course.",
+   "fieldname": "quiz_completion",
+   "fieldtype": "Select",
+   "label": "Quizzes to Complete a Lesson",
+   "options": "\nNot required\nAttempted\nPassed"
+  },
+  {
+   "description": "Empty follows the site setting and then the course.",
+   "fieldname": "assignment_completion",
+   "fieldtype": "Select",
+   "label": "Assignments to Complete a Lesson",
+   "options": "\nNot required\nAttempted\nPassed"
+  },
+  {
+   "description": "Empty follows the site setting and then the course.",
+   "fieldname": "programming_exercise_completion",
+   "fieldtype": "Select",
+   "label": "Programming Exercises to Complete a Lesson",
+   "options": "\nNot required\nAttempted\nPassed"
+  },
+  {
    "fieldname": "timezone",
    "fieldtype": "Data",
    "label": "Timezone",
@@ -445,7 +469,7 @@
    "link_fieldname": "payment_for_document"
   }
  ],
- "modified": "2026-11-18 00:00:00.000000",
+ "modified": "2026-11-18 00:00:03.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Batch",

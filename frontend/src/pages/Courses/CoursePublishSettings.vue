@@ -42,6 +42,19 @@
 			</div>
 		</CollapsibleSection>
 
+		<CollapsibleSection :label="__('Lesson completion')">
+			<div class="flex flex-col gap-y-4">
+				<Select
+					v-for="field in completionFields()"
+					:key="field.name"
+					v-model="doc[field.name]"
+					:label="field.label"
+					:options="completionOptions()"
+					@update:modelValue="markDirty()"
+				/>
+			</div>
+		</CollapsibleSection>
+
 		<CollapsibleSection :label="__('Pricing and certification')">
 			<div class="flex flex-col gap-y-4">
 				<BooleanSwitch
@@ -212,6 +225,11 @@ import { computed, inject, ref } from 'vue'
 import CollapsibleSection from '@/components/CollapsibleSection.vue'
 import Link from '@/components/Controls/Link.vue'
 import MultiLink from '@/components/Controls/MultiLink.vue'
+import Select from '@/components/Controls/Select.vue'
+import {
+	completionFields,
+	completionOptions,
+} from '@/utils/completionOverrides'
 import NewMemberModal from '@/components/Modals/NewMemberModal.vue'
 import { useSettings } from '@/stores/settings'
 import type { CourseFormContext, Resource } from '@/types'

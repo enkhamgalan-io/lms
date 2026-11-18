@@ -26,6 +26,9 @@
   "disable_self_learning",
   "organizations",
   "access_days",
+  "quiz_completion",
+  "assignment_completion",
+  "programming_exercise_completion",
   "enforce_lesson_completion",
   "section_break_18",
   "short_introduction",
@@ -112,6 +115,27 @@
    "fieldtype": "Int",
    "label": "Access Days",
    "non_negative": 1
+  },
+  {
+   "description": "Empty follows the site setting.",
+   "fieldname": "quiz_completion",
+   "fieldtype": "Select",
+   "label": "Quizzes to Complete a Lesson",
+   "options": "\nNot required\nAttempted\nPassed"
+  },
+  {
+   "description": "Empty follows the site setting.",
+   "fieldname": "assignment_completion",
+   "fieldtype": "Select",
+   "label": "Assignments to Complete a Lesson",
+   "options": "\nNot required\nAttempted\nPassed"
+  },
+  {
+   "description": "Empty follows the site setting.",
+   "fieldname": "programming_exercise_completion",
+   "fieldtype": "Select",
+   "label": "Programming Exercises to Complete a Lesson",
+   "options": "\nNot required\nAttempted\nPassed"
   },
   {
    "default": "0",
@@ -339,7 +363,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2026-11-18 00:00:02.000000",
+ "modified": "2026-11-18 00:00:03.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Course",

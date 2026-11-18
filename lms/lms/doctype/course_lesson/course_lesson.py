@@ -533,9 +533,39 @@ ENFORCED_BEFORE_MIGRATE = {"enforce_quiz_completion", "enforce_assignment_comple
 PASSED_STATUS = {"LMS Assignment Submission": "Pass", "LMS Programming Exercise Submission": "Passed"}
 
 
-def get_completion_rules() -> dict[str, str | None]:
+# A course, then the batch a learner came through, may set an item's rule for itself.
+# Empty follows the level above. Both quiz items follow the one quiz field.
+OVERRIDE_FIELDS = {
+	"quiz": "quiz_completion",
+	"open_ended_quiz": "quiz_completion",
+	"assignment": "assignment_completion",
+	"programming_exercise": "programming_exercise_completion",
+}
+OVERRIDE_RULES = {"Not required": None, "Attempted": "Attempted", "Passed": "Passed"}
+
+
+def get_completion_rules(course: str | None = None, member: str | None = None) -> dict[str, str | None]:
 	"""What each completion item must reach, "Attempted" or "Passed", or None where the
-	item does not gate completion."""
+	item does not gate completion: the site's rules, then the course's, then those of
+	the batch `member` takes the course through."""
+	rules = _site_completion_rules()
+	if not course:
+		return rules
+	fields = list(dict.fromkeys(OVERRIDE_FIELDS.values()))
+	layers = [frappe.db.get_value("LMS Course", course, fields, as_dict=True)]
+	batch = member and frappe.db.get_value(
+		"LMS Enrollment", {"course": course, "member": member}, "enrollment_from_batch"
+	)
+	if batch:
+		layers.append(frappe.db.get_value("LMS Batch", batch, fields, as_dict=True))
+	for layer in filter(None, layers):
+		for item, field in OVERRIDE_FIELDS.items():
+			if layer.get(field) in OVERRIDE_RULES:
+				rules[item] = OVERRIDE_RULES[layer.get(field)]
+	return rules
+
+
+def _site_completion_rules() -> dict[str, str | None]:
 	fields = list(dict.fromkeys(field for item in COMPLETION_ITEMS.values() for field in item[:2]))
 	# A field the meta lacks comes back None; one it has reads 0 even when never stored.
 	stored = frappe.get_cached_value("LMS Settings", None, fields, as_dict=True) or {}
@@ -617,7 +647,9 @@ def _save_progress(lesson: str, course: str, scorm_details: dict = None):
 		{"lesson": lesson, "member": frappe.session.user, "status": "Complete"},
 	)
 
-	requirements_met = lesson_requirements_met(lesson, frappe.session.user, get_completion_rules())
+	requirements_met = lesson_requirements_met(
+		lesson, frappe.session.user, get_completion_rules(course, frappe.session.user)
+	)
 
 	if scorm_details:
 		scorm_details = frappe._dict(**scorm_details)
@@ -698,12 +730,11 @@ def complete_lessons_after_grading(member: str, assessment_type: str, assessment
 	# Progress is recorded for the session user unless a privileged role writes it.
 	if not PRIVILEGED_ROLES & set(frappe.get_roles()):
 		return
-	rules = get_completion_rules()
 	for lesson in _student_placements(assessment_type, assessment_name):
 		if video_holds_completion(lesson):
 			continue
 		course = get_lesson_course(lesson)
-		if course and _can_complete_for(course, lesson, member, rules):
+		if course and _can_complete_for(course, lesson, member, get_completion_rules(course, member)):
 			_record_graded_completion(course, lesson, member)
 
 
