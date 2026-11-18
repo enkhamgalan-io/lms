@@ -78,6 +78,12 @@ export interface LMSBatch {
 	instructors: CourseInstructor[]
 	/**	Visible To Organizations : Table MultiSelect - LMS Visible Organization	*/
 	organizations?: LMSVisibleOrganization[]
+	/**	Quizzes to Complete a Lesson : Select - Empty follows the level above	*/
+	quiz_completion?: '' | 'Not required' | 'Attempted' | 'Passed'
+	/**	Assignments to Complete a Lesson : Select - Empty follows the level above	*/
+	assignment_completion?: '' | 'Not required' | 'Attempted' | 'Passed'
+	/**	Programming Exercises to Complete a Lesson : Select - Empty follows the level above	*/
+	programming_exercise_completion?: '' | 'Not required' | 'Attempted' | 'Passed'
 	/**	Confirmation Email Template : Link - Email Template	*/
 	confirmation_email_template?: string
 	/**	Certification : Check	*/

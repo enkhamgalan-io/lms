@@ -175,6 +175,15 @@
 							variant="outline"
 						/>
 						<Select
+							v-for="field in completionFields()"
+							:key="field.name"
+							v-model="batchDetail.doc[field.name]"
+							:label="field.label"
+							:options="completionOptions()"
+							variant="outline"
+							class="w-full"
+						/>
+						<Select
 							v-model="batchDetail.doc.medium"
 							:label="__('Medium')"
 							:options="mediumOptions"
@@ -356,6 +365,10 @@ import MultiLink from '@/components/Controls/MultiLink.vue'
 import { summarisePeople } from '@/utils/peopleSummary'
 import Link from '@/components/Controls/Link.vue'
 import Select from '@/components/Controls/Select.vue'
+import {
+	completionFields,
+	completionOptions,
+} from '@/utils/completionOverrides'
 import BatchCourses from '@/pages/Batches/components/BatchCourses.vue'
 import Assessments from '@/pages/Batches/components/Assessments.vue'
 import NewMemberModal from '@/components/Modals/NewMemberModal.vue'
