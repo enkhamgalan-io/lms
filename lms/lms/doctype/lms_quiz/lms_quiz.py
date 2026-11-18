@@ -1,8 +1,11 @@
 # Copyright (c) 2021, FOSS United and contributors
 # For license information, please see license.txt
 
+import hashlib
+import hmac
 import json
 import os
+import random
 import re
 import warnings
 from binascii import Error as BinasciiError
@@ -23,6 +26,7 @@ from frappe.utils import (
 )
 from frappe.utils.file_manager import safe_b64decode
 from frappe.utils.html_utils import sanitize_html
+from frappe.utils.password import get_encryption_key
 
 # fuzzywuzzy warns on import unless python-Levenshtein is installed. That
 # package scores differently from difflib and would change which answers pass.
@@ -67,6 +71,8 @@ MAX_VIOLATION_FRAME_BYTES = 250 * 1024
 # Per attempt, not per event: an attempt that trips two hundred times does not need two
 # hundred stills to show what happened.
 MAX_VIOLATION_FRAMES = 40
+# Longer than any attempt runs; a window older than this no longer holds the quiz.
+QUIZ_SESSION_SECONDS = 12 * 60 * 60
 
 
 class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
@@ -154,6 +160,72 @@ class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
 			return result[0]
 
 
+def _attempt_seed(quiz: str, member: str) -> bytes:
+	"""Fixed for one attempt and fresh for the next, so a reload draws the same questions
+	and only a submission draws new ones. Keyed by the site secret, so a learner cannot
+	work the draw out ahead."""
+	attempt = frappe.db.count("LMS Quiz Submission", {"quiz": quiz, "member": member})
+	message = f"{quiz}\0{member}\0{attempt}".encode()
+	return hmac.new(get_encryption_key().encode(), message, hashlib.sha256).digest()
+
+
+def attempt_question_names(quiz: str, member: str) -> list[str]:
+	"""The questions one attempt shows, in the order it shows them. Drawn here rather than
+	in the page, so a limited quiz shows no learner the questions left out of their draw."""
+	shuffle, limit = frappe.db.get_value("LMS Quiz", quiz, ["shuffle_questions", "limit_questions_to"])
+	names = frappe.get_all(
+		"LMS Quiz Question",
+		filters={"parent": quiz, "parenttype": "LMS Quiz"},
+		pluck="question",
+		order_by="idx",
+	)
+	# A row whose question was deleted cannot be shown, so it must not take a place in the draw.
+	existing = set(frappe.get_all("LMS Question", filters={"name": ["in", names]}, pluck="name"))
+	names = [name for name in names if name in existing]
+	if not shuffle:
+		return names
+	random.Random(_attempt_seed(quiz, member)).shuffle(names)
+	return names[: cint(limit)] if cint(limit) else names
+
+
+def option_order(quiz: str, member: str, question: str) -> list[int]:
+	"""The option numbers of a question in the order this attempt shows them."""
+	order = list(range(1, len(QUESTION_OPTION_FIELDS) + 1))
+	random.Random(_attempt_seed(quiz, member) + question.encode()).shuffle(order)
+	return order
+
+
+def _session_key(quiz: str, member: str) -> str:
+	return f"lms:quiz_session:{quiz}:{member}"
+
+
+def open_quiz_session(quiz: str, member: str) -> str:
+	"""Start the window a single-session quiz may be submitted from, ending any earlier one."""
+	token = frappe.generate_hash(length=20)
+	frappe.cache.set_value(_session_key(quiz, member), token, expires_in_sec=QUIZ_SESSION_SECONDS)
+	return token
+
+
+def _assert_quiz_session(quiz: str, member: str, token: str | None) -> None:
+	# shortcut: the window lives in Redis, so a flushed cache lets any window submit; move it
+	# to the database if the lock must survive a cache restart.
+	current = frappe.cache.get_value(_session_key(quiz, member))
+	if current and not hmac.compare_digest(current, cstr(token)):
+		frappe.throw(
+			_("This quiz was opened in another window. Submit it from there, or reload this page."),
+			frappe.ValidationError,
+		)
+
+
+def _assert_drawn(quiz: str, member: str, question_names: list[str]) -> None:
+	drawn = set(attempt_question_names(quiz, member))
+	if any(name not in drawn for name in question_names):
+		frappe.throw(
+			_("This attempt shows different questions now. Reload the page to continue."),
+			frappe.ValidationError,
+		)
+
+
 def set_total_marks(questions: list) -> int:
 	marks = 0
 	for question in questions:
@@ -190,6 +262,7 @@ def submit_quiz(
 	violation_count: int = 0,
 	submission_reason: str = "manual",
 	violation_events: str | None = None,
+	attempt_token: str | None = None,
 ):
 	if not isinstance(quiz, str):
 		frappe.throw(_("Invalid quiz."), frappe.ValidationError)
@@ -217,6 +290,7 @@ def submit_quiz(
 			"enable_scheduling",
 			"schedule_start",
 			"schedule_end",
+			"single_session",
 		],
 		as_dict=1,
 	)
@@ -234,6 +308,11 @@ def submit_quiz(
 		quiz_details.schedule_end,
 		label=quiz_details.title or _("This quiz"),
 	)
+
+	member = frappe.session.user
+	if quiz_details.single_session:
+		_assert_quiz_session(quiz, member, attempt_token)
+	_assert_drawn(quiz, member, [result["question_name"] for result in results])
 
 	data = process_results(results, quiz_details)
 	is_open_ended = data["is_open_ended"]
@@ -256,6 +335,8 @@ def submit_quiz(
 
 	_save_violation_events(submission.name, proctoring["events"])
 	_attach_answer_files(data["answer_files"], submission.name)
+	if quiz_details.single_session:
+		frappe.cache.delete_value(_session_key(quiz, member))
 
 	return {
 		"score": submission.score,
@@ -805,6 +886,8 @@ def check_answer(quiz: str, question: str, question_type: str, answers: str):
 
 	if not frappe.db.exists("LMS Quiz Question", {"parent": quiz, "question": question}):
 		frappe.throw(_("Question not found in this quiz."), frappe.PermissionError)
+	# Otherwise live checking reads out the answers to questions left out of this draw.
+	_assert_drawn(quiz, frappe.session.user, [question])
 
 	if not is_admin and not frappe.db.get_value("LMS Quiz", quiz, "show_answers"):
 		frappe.throw(

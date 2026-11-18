@@ -314,6 +314,24 @@
 						variant="outline"
 					/>
 					<BooleanSwitch
+						v-model="doc.shuffle_options"
+						size="sm"
+						:label="__('Shuffle Options')"
+						:description="
+							__('Randomize the order of answer options for each attempt.')
+						"
+					/>
+					<BooleanSwitch
+						v-model="doc.single_session"
+						size="sm"
+						:label="__('Single Session')"
+						:description="
+							__(
+								'Allow the quiz in one window at a time. Opening it again ends the earlier window.'
+							)
+						"
+					/>
+					<BooleanSwitch
 						v-model="doc.enable_negative_marking"
 						size="sm"
 						:label="__('Enable Negative Marking')"
