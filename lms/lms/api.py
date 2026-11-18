@@ -3083,6 +3083,47 @@ def delete_member(user: str):
 	return True
 
 
+@frappe.whitelist()
+def get_member_enrollment_options(member: str) -> dict:
+	"""The free, published courses and running batches open to `member`, for whoever manages
+	them to enroll them in, each marked if they are in it already."""
+	check_members_access()
+	if not isinstance(member, str) or not frappe.db.exists("User", member):
+		frappe.throw(_("Member {0} does not exist.").format(member), frappe.DoesNotExistError)
+	check_member_in_scope(member)
+
+	courses = frappe.get_all(
+		"LMS Course",
+		{
+			"published": 1,
+			"paid_course": 0,
+			"name": ["not in", hidden_by_organization("LMS Course", member)],
+		},
+		["name", "title"],
+		order_by="title asc",
+		limit_page_length=0,
+	)
+	batches = frappe.get_all(
+		"LMS Batch",
+		{
+			"published": 1,
+			"paid_batch": 0,
+			"end_date": [">=", getdate()],
+			"name": ["not in", hidden_by_organization("LMS Batch", member)],
+		},
+		["name", "title", "start_date"],
+		order_by="start_date asc",
+		limit_page_length=0,
+	)
+	in_courses = set(frappe.get_all("LMS Enrollment", {"member": member}, pluck="course"))
+	in_batches = set(frappe.get_all("LMS Batch Enrollment", {"member": member}, pluck="batch"))
+	for course in courses:
+		course.enrolled = course.name in in_courses
+	for batch in batches:
+		batch.enrolled = batch.name in in_batches
+	return {"courses": courses, "batches": batches}
+
+
 @frappe.whitelist(methods=["POST"])
 def set_member_enabled(member: str, enabled: int):
 	"""Disable a member who has left, or bring them back. Their records stay."""

@@ -878,12 +878,17 @@ def send_course_reminder(course: str, enrollment: str) -> dict:
 
 @frappe.whitelist(methods=["POST"])
 def set_course_access(course: str, enrollment: str, valid_until: str | None = None) -> dict:
-	"""Extend, shorten or lift a student's access to the course. Empty means no end."""
-	_check_dashboard_access(course)
-	if not isinstance(enrollment, str) or not frappe.db.exists(
-		"LMS Enrollment", {"name": enrollment, "course": course}
-	):
+	"""Extend, shorten or lift a student's access to the course. Empty means no end. The
+	course's staff set it for anyone, an Organization Manager for their own people."""
+	from lms.lms.permissions import can_manage_member
+
+	if not isinstance(course, str) or not isinstance(enrollment, str):
+		frappe.throw(_("Pass the course and enrollment names as text."))
+	member = frappe.db.get_value("LMS Enrollment", {"name": enrollment, "course": course}, "member")
+	if not member:
 		frappe.throw(_("This student is not enrolled in this course."), frappe.DoesNotExistError)
+	if not can_modify_course(course) and not can_manage_member(member):
+		frappe.throw(_("You cannot change this student's access."), frappe.PermissionError)
 	valid_until = getdate(valid_until) if valid_until else None
 	frappe.db.set_value("LMS Enrollment", enrollment, "valid_until", valid_until)
 	return {"enrollment": enrollment, "valid_until": valid_until}
