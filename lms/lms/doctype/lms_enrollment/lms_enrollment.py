@@ -34,7 +34,12 @@ class LMSEnrollment(Document):
 		"""The member is the caller, unless the caller manages the course or the
 		row comes with a batch enrolment or a verified payment, which authorised its
 		member already."""
-		if self.flags.via_batch_enrollment or self.flags.via_payment or self.managed_by_caller():
+		if (
+			self.flags.via_batch_enrollment
+			or self.flags.via_payment
+			or self.managed_by_caller()
+			or self.enrolled_by_organization_manager()
+		):
 			return
 		if self.member and self.member != frappe.session.user:
 			frappe.throw(_("You cannot enroll another user."), frappe.PermissionError)
@@ -57,6 +62,12 @@ class LMSEnrollment(Document):
 		# Set on insert by set_valid_until; only staff extend it afterwards.
 		if previous:
 			self.valid_until = previous.valid_until
+
+	def enrolled_by_organization_manager(self) -> bool:
+		"""Someone else's enrollment, made by a manager of the member's organization."""
+		from lms.lms.permissions import can_manage_member
+
+		return bool(self.member) and self.member != frappe.session.user and can_manage_member(self.member)
 
 	def managed_by_caller(self) -> bool:
 		"""A Moderator, a site administrator or an author of this course. A site-wide
@@ -128,7 +139,12 @@ class LMSEnrollment(Document):
 				return
 
 		managed = self.managed_by_caller()
-		if course_details.disable_self_learning and not managed:
+		# An Organization Manager assigns a course; they do not take it themselves.
+		if (
+			course_details.disable_self_learning
+			and not managed
+			and not self.enrolled_by_organization_manager()
+		):
 			frappe.throw(
 				_(
 					"You cannot enroll in this course as self-learning is disabled. Please contact the Administrator."

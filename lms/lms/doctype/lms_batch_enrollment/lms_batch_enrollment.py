@@ -19,6 +19,7 @@ from lms.lms.locking import locked_count
 from lms.lms.permissions import (
 	authored_batch_condition,
 	can_author_batch,
+	can_manage_member,
 	hidden_by_organization,
 	is_site_administrator,
 )
@@ -81,6 +82,9 @@ class LMSBatchEnrollment(Document):
 		# members into a batch they are actually tagged an instructor/evaluator on.
 		if can_author_batch(self.batch):
 			return
+		# Scoped too: a manager of the member's organization.
+		if can_manage_member(self.member):
+			return
 
 		frappe.throw(
 			_("You must be a Moderator, Batch Evaluator, or this batch's instructor to enroll users.")
@@ -115,8 +119,10 @@ class LMSBatchEnrollment(Document):
 		frappe.throw(_("Enrollment in this batch is restricted. Please contact the Administrator."))
 
 	def validate_organization(self):
-		"""A batch shown to some organizations only takes their people when they enroll themselves."""
-		if not self.is_new() or self.owner != self.member or can_author_batch(self.batch):
+		"""A batch shown to some organizations only takes their people, whether they enroll
+		themselves or their Organization Manager enrolls them. Batch staff enroll anyone."""
+		staff = {"Moderator", "Batch Evaluator"} & set(frappe.get_roles()) or can_author_batch(self.batch)
+		if not self.is_new() or staff:
 			return
 		if self.batch in hidden_by_organization("LMS Batch", self.member):
 			frappe.throw(_("This batch is open to other organizations only."), frappe.PermissionError)
@@ -272,13 +278,17 @@ def has_permission(doc, ptype="read", user=None):
 		# Whether this batch actually allows it is validate()'s decision.
 		if doc.get("member") == user:
 			return True
-		return can_author_batch(doc.get("batch"), user=user)
+		# validate_owner() lets a manager of the member's organization enroll them.
+		return can_author_batch(doc.get("batch"), user=user) or can_manage_member(doc.get("member"), user)
 
 	stored = frappe.db.get_value(doc.doctype, doc.name, ["batch", "member"], as_dict=True)
 	if not stored:
 		return False
 
 	if ptype in ("read", "select", "print") and stored.member == user and doc.get("member") == user:
+		return True
+	# An Organization Manager follows their own people's batches, without changing them.
+	if ptype in ("read", "select", "print") and can_manage_member(stored.member, user):
 		return True
 
 	# Both the stored and the submitted batch, or a save could move the row out

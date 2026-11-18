@@ -54,6 +54,9 @@ vi.mock('@/components/Settings/Members/members', () => ({
 	noRoles: () => ({ student: false }),
 	rolesFrom: () => ({}),
 }))
+vi.mock('@/components/Settings/Members/MemberEnrollments.vue', () => ({
+	default: { template: '<div />' },
+}))
 vi.mock('@/components/Controls/Link.vue', () => ({
 	default: { template: '<div />' },
 }))

@@ -112,6 +112,11 @@
 				:rows="grantableRoleRows(user.data)"
 				@toggle="(key, value) => (roles[key] = value)"
 			/>
+
+			<template v-if="isEdit && record">
+				<div class="h-px border-t border-outline-elevation-2" />
+				<MemberEnrollments :member="record" />
+			</template>
 		</div>
 	</SettingsLayout>
 </template>
@@ -123,6 +128,7 @@ import { useOnboarding } from '@framework/ui/components/Onboarding/index'
 import { seesOnboarding } from '@/utils/onboarding'
 import { useTelemetry } from '@framework/ui/telemetry/index'
 import Link from '@/components/Controls/Link.vue'
+import MemberEnrollments from '@/components/Settings/Members/MemberEnrollments.vue'
 import RoleSwitches from '@/components/Controls/RoleSwitches.vue'
 import SettingsLayout from '@/components/Layouts/settings/desktop/SettingsLayout.vue'
 import {

@@ -332,6 +332,12 @@ def enrollment_has_permission(doc, ptype="read", user=None) -> bool:
 	)
 	if batch and doc.get("enrollment_from_batch") == batch and can_author_batch(batch, user=user):
 		return True
+	# An Organization Manager enrolls their own people and follows their progress; the
+	# controller holds the insert to them. Judged by the stored member, so a row cannot
+	# be relabelled into reach.
+	member = doc.get("member") if doc.is_new() else frappe.db.get_value(doc.doctype, doc.name, "member")
+	if ptype in ("create", "read", "select") and member and can_manage_member(member, user):
+		return True
 	return course_record_has_permission(doc, ptype, user)
 
 

@@ -11,7 +11,7 @@ from frappe import _
 from frappe.utils import cint, flt
 from pypika.terms import ExistsCriterion
 
-from lms.lms.permissions import can_author_batch, can_author_course
+from lms.lms.permissions import can_author_batch, can_author_course, managed_organizations
 
 MAX_BULK_ENROLL_MEMBERS: int = 50
 
@@ -221,13 +221,19 @@ def parse_linked_payments(linked: dict | str | None) -> dict[str, str]:
 	return linked
 
 
-def can_enroll_others(doctype: str, docname: str) -> bool:
+def enrolls_as_staff(doctype: str, docname: str) -> bool:
 	if doctype == "LMS Course":
 		return can_author_course(docname)
 	if doctype == "LMS Batch":
 		roles = frappe.get_roles()
 		return "Moderator" in roles or "Batch Evaluator" in roles or can_author_batch(docname)
 	return False
+
+
+def can_enroll_others(doctype: str, docname: str) -> bool:
+	"""Staff enroll anyone. An Organization Manager enrolls their own people, which the
+	enrollment controllers hold them to, member by member."""
+	return enrolls_as_staff(doctype, docname) or (doctype in ENROLL_TARGETS and bool(managed_organizations()))
 
 
 def can_record_payments(doctype: str, docname: str) -> bool:
@@ -529,6 +535,9 @@ def search_users(
 	)
 	if not {"Moderator", "System Manager"} & set(frappe.get_roles()):
 		query = query.where(User.user_type != "System User")
+	if not enrolls_as_staff(doctype, docname):
+		# An Organization Manager finds only the people they manage.
+		query = query.where(User.organization.isin(managed_organizations() or [""]))
 	query = query.where(~ExistsCriterion(_blocking_enrollment(doctype, docname, include_enrolled)))
 	if names is not None:
 		query = query.where(User.name.isin(names)).orderby(User.name)
