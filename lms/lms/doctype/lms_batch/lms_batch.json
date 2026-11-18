@@ -15,6 +15,7 @@
   "end_date",
   "column_break_4",
   "allow_self_enrollment",
+  "organizations",
   "start_time",
   "end_time",
   "timezone",
@@ -320,6 +321,13 @@
    "label": "Allow Self Enrollment"
   },
   {
+   "description": "Only the people of these organizations, and of the organizations under them, see this and can enroll. Leave empty to show it to everyone.",
+   "fieldname": "organizations",
+   "fieldtype": "Table MultiSelect",
+   "label": "Visible To Organizations",
+   "options": "LMS Visible Organization"
+  },
+  {
    "fieldname": "timezone",
    "fieldtype": "Data",
    "label": "Timezone",
@@ -437,7 +445,7 @@
    "link_fieldname": "payment_for_document"
   }
  ],
- "modified": "2026-10-01 00:00:00.000000",
+ "modified": "2026-11-18 00:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Batch",

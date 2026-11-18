@@ -71,7 +71,7 @@ def can_access_course(course: str, *, user: str | None = None) -> bool:
 	if published is None:
 		# A course that is not there is not readable, rather than not decided.
 		return False
-	if published:
+	if published and course not in hidden_by_organization("LMS Course", user):
 		return True
 	if can_author_course(course, user=user):
 		return True
@@ -121,7 +121,10 @@ def _course_read_condition(user=None):
 		.where((instructor.instructor == member) & (instructor.parenttype == "LMS Course"))
 	)
 	enrolled = frappe.qb.from_(enrollment).select(enrollment.course).where(enrollment.member == member)
-	return Bracket((course.published == 1) | course.name.isin(taught) | course.name.isin(enrolled))
+	published = course.published == 1
+	if hidden := hidden_by_organization("LMS Course", user):
+		published = published & course.name.notin(hidden)
+	return Bracket(published | course.name.isin(taught) | course.name.isin(enrolled))
 
 
 def _render(condition) -> str:
@@ -1819,18 +1822,56 @@ def user_query_conditions(user=None, doctype=None) -> str:
 	return _render(Bracket(condition))
 
 
+def _picks_only_managed_organizations(user: str) -> bool:
+	"""Course and batch staff pick any organization to show their work to. An Organization
+	Manager without a staff role picks only among their own, the ones they place members in."""
+	roles = frappe.get_roles(user)
+	return _scoped_to_organizations(user) and not {"Course Creator", "Batch Evaluator"} & set(roles)
+
+
 def organization_has_permission(doc, ptype="read", user=None) -> bool:
 	user = user or frappe.session.user
-	if manages_every_member(user):
+	if not _picks_only_managed_organizations(user):
 		return True
 	return ptype in ("read", "select") and doc.name in managed_organizations(user)
 
 
 def organization_query_conditions(user=None, doctype=None) -> str:
 	user = user or frappe.session.user
-	if manages_every_member(user):
+	if not _picks_only_managed_organizations(user):
 		return ""
 	organizations = managed_organizations(user)
 	if not organizations:
 		return "1=0"
 	return _render(frappe.qb.DocType("LMS Organization").name.isin(organizations))
+
+
+def organizations_reaching(user: str) -> list[str]:
+	"""The user's organization and every organization above it."""
+	from frappe.utils.nestedset import get_ancestors_of
+
+	organization = frappe.db.get_value("User", user, "organization") if user != "Guest" else None
+	if not organization:
+		return []
+	return [organization, *get_ancestors_of("LMS Organization", organization)]
+
+
+def hidden_by_organization(doctype: str, user: str | None = None) -> list[str]:
+	"""Courses or batches (`doctype`) limited to organizations `user` is outside of.
+
+	A row with no organizations is everyone's. One listing an organization reaches its
+	people and the people of every organization under it."""
+	user = user or frappe.session.user
+	if manages_every_member(user):
+		return []
+	rows = frappe.get_all(
+		"LMS Visible Organization",
+		{"parenttype": doctype, "parentfield": "organizations"},
+		["parent", "organization"],
+	)
+	if not rows:
+		return []
+	reaching = set(organizations_reaching(user))
+	restricted = {row.parent for row in rows}
+	allowed = {row.parent for row in rows if row.organization in reaching}
+	return sorted(restricted - allowed)
