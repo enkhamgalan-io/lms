@@ -1,0 +1,32 @@
+<p>
+    {{ _("Dear ") }} {{ student_name }},
+</p>
+<br>
+<p>
+    {{ _("A quiz you are taking opens tomorrow. Please be prepared to take it while it is open.") }}
+</p>
+<br>
+<p>
+    <b>{{ _("Quiz:") }}</b> {{ title }}
+</p>
+<p>
+    <b>{{ _("Opens:") }}</b> {{ frappe.utils.format_datetime(schedule_start, "medium") }}
+</p>
+{% if schedule_end %}
+<p>
+    <b>{{ _("Closes:") }}</b> {{ frappe.utils.format_datetime(schedule_end, "medium") }}
+</p>
+{% endif %}
+{% if duration %}
+<p>
+    <b>{{ _("Duration:") }}</b> {{ duration }} {{ _("minutes") }}
+</p>
+{% endif %}
+<br>
+<p>
+    <a href="{{ link }}">👉 {{ _("Open the quiz") }}</a>
+</p>
+<br>
+<p>
+    {{ _("Best Regards") }}
+</p>

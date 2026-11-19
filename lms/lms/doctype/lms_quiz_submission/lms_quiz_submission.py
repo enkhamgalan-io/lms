@@ -9,6 +9,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import cint
 
 from lms.lms.html_sanitizer import sanitize_rich_text
+from lms.lms.utils import get_lms_route
 
 
 class LMSQuizSubmission(Document):
@@ -35,6 +36,7 @@ class LMSQuizSubmission(Document):
 
 	def on_update(self):
 		self.notify_member()
+		self.email_grade()
 		self.complete_lessons_on_pass()
 
 	def complete_lessons_on_pass(self):
@@ -139,6 +141,26 @@ class LMSQuizSubmission(Document):
 			)
 
 			make_notification_logs(notification, [self.member])
+
+	def email_grade(self):
+		"""A grader's change to the score; the learner's own submit shows them theirs."""
+		if not self.get_doc_before_save() or not self.has_value_changed("score"):
+			return
+		from lms.lms.doctype.lms_quiz.lms_quiz import send_quiz_email
+
+		send_quiz_email(
+			self.member,
+			"quiz_result_template",
+			_("Your submission for {0} has been graded").format(self.quiz_title),
+			"quiz_result",
+			{
+				"title": self.quiz_title,
+				"score": self.score,
+				"score_out_of": self.score_out_of,
+				"percentage": self.percentage,
+				"link": get_lms_route(f"quiz/{self.quiz}"),
+			},
+		)
 
 
 class MaximumAttemptsExceededError(frappe.DuplicateEntryError):
