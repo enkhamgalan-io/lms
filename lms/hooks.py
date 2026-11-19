@@ -406,6 +406,7 @@ standard_sidebar_items = [
 	{"name1": "courses", "is_standard": 1, "item_type": "Built-in"},
 	{"name1": "programs", "is_standard": 1, "item_type": "Built-in"},
 	{"name1": "batches", "is_standard": 1, "item_type": "Built-in"},
+	{"name1": "calendar", "is_standard": 1, "item_type": "Built-in"},
 	{"name1": "certifications", "is_standard": 1, "item_type": "Built-in"},
 	{"name1": "jobs", "is_standard": 1, "item_type": "Built-in"},
 	{"name1": "statistics", "is_standard": 1, "item_type": "Built-in"},

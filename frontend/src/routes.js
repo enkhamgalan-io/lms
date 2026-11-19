@@ -254,6 +254,11 @@ export const routes = [
 		props: true,
 	},
 	{
+		path: '/calendar',
+		name: 'Calendar',
+		component: () => import('@/pages/Calendar.vue'),
+	},
+	{
 		path: '/quiz/:quizID',
 		name: 'QuizPage',
 		component: () => import('@/pages/QuizPage.vue'),
