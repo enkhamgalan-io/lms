@@ -21,6 +21,16 @@ export interface LMSBatchEnrollment {
 	source?: string
 	/**	Confirmation Email Sent : Check	*/
 	confirmation_email_sent?: 0 | 1
+	/**	Exam Score : Float	*/
+	exam_score?: number
+	/**	Attendance Score : Float	*/
+	attendance_score?: number
+	/**	Progress Score : Float	*/
+	progress_score?: number
+	/**	Bonus Score : Float	*/
+	bonus_score?: number
+	/**	Final Score : Float	*/
+	final_score?: number
 	/**	Batch : Link - LMS Batch	*/
 	batch: string
 	/**	Member Image : Attach Image	*/

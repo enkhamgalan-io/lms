@@ -145,7 +145,16 @@ export interface StudentActivity {
 	at: string
 }
 
+export type StudentGrades = {
+	exam_score: number
+	attendance_score: number
+	progress_score: number
+	bonus_score: number
+	final_score: number
+}
+
 export type BatchStudentDetail = Omit<BatchStudentRow, 'courses'> & {
+	grades: StudentGrades
 	courses: StudentCourseOutline[]
 	classes: StudentClass[]
 	assessments: StudentAssessment[]

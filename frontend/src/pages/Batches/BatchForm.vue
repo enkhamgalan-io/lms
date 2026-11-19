@@ -141,6 +141,37 @@
 
 				<div class="px-5 pb-5 space-y-5 border-b mb-5">
 					<h2 class="text-base-semibold text-ink-gray-9">
+						{{ __('Grading') }}
+					</h2>
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+						<Select
+							v-model="batchDetail.doc.grading_method"
+							:label="__('Grading Method')"
+							:options="gradingOptions"
+							variant="outline"
+						/>
+						<template v-if="batchDetail.doc.grading_method === 'Weighted'">
+							<FormControl
+								v-for="field in WEIGHT_FIELDS"
+								:key="field.name"
+								v-model="batchDetail.doc[field.name]"
+								:label="field.label()"
+								type="number"
+								variant="outline"
+							/>
+						</template>
+					</div>
+					<p class="text-p-sm text-ink-gray-6">
+						{{
+							__(
+								'Exam only uses the exam score. Weighted mixes exam, attendance and progress by weights that add up to 100. Any bonus is added on top.'
+							)
+						}}
+					</p>
+				</div>
+
+				<div class="px-5 pb-5 space-y-5 border-b mb-5">
+					<h2 class="text-base-semibold text-ink-gray-9">
 						{{ __('Batch overview') }}
 					</h2>
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -693,6 +724,17 @@ const mediumOptions = computed(() => {
 		},
 	]
 })
+
+const gradingOptions = computed(() => [
+	{ label: __('Exam only'), value: 'Exam only' },
+	{ label: __('Weighted'), value: 'Weighted' },
+])
+
+const WEIGHT_FIELDS = [
+	{ name: 'exam_weight', label: () => __('Exam Weight (%)') },
+	{ name: 'attendance_weight', label: () => __('Attendance Weight (%)') },
+	{ name: 'progress_weight', label: () => __('Progress Weight (%)') },
+] as const
 
 const isSaving = computed(() => batchDetail.setValue.loading)
 

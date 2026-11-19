@@ -327,6 +327,14 @@
 				</div>
 			</section>
 
+			<BatchStudentGrades
+				v-if="student?.grades"
+				:batchName="batchName"
+				:enrollment="enrollment"
+				:grades="student.grades"
+				@saved="load"
+			/>
+
 			<section
 				v-if="student?.feedback"
 				data-section="feedback"
@@ -355,6 +363,7 @@
 import { Badge, createResource, toast } from 'frappe-ui'
 import { computed, ref, watch } from 'vue'
 import StudentSheetLayout from '@/components/Dashboard/StudentSheetLayout.vue'
+import BatchStudentGrades from '@/pages/Batches/components/BatchStudentGrades.vue'
 import { TRACK_LABELS, TRACK_THEMES } from '@/utils/dashboard/filters'
 import {
 	allCoursesFinished,

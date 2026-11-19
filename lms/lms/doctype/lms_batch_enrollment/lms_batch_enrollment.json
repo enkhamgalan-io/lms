@@ -14,7 +14,14 @@
   "batch",
   "payment",
   "source",
-  "confirmation_email_sent"
+  "confirmation_email_sent",
+  "grades_section",
+  "exam_score",
+  "attendance_score",
+  "progress_score",
+  "column_break_grds",
+  "bonus_score",
+  "final_score"
  ],
  "fields": [
   {
@@ -62,6 +69,56 @@
    "label": "Confirmation Email Sent"
   },
   {
+   "fieldname": "grades_section",
+   "fieldtype": "Section Break",
+   "label": "Grades"
+  },
+  {
+   "default": "0",
+   "fieldname": "exam_score",
+   "fieldtype": "Float",
+   "label": "Exam Score",
+   "non_negative": 1,
+   "permlevel": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "attendance_score",
+   "fieldtype": "Float",
+   "label": "Attendance Score",
+   "non_negative": 1,
+   "permlevel": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "progress_score",
+   "fieldtype": "Float",
+   "label": "Progress Score",
+   "non_negative": 1,
+   "permlevel": 1
+  },
+  {
+   "fieldname": "column_break_grds",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "bonus_score",
+   "fieldtype": "Float",
+   "label": "Bonus Score",
+   "non_negative": 1,
+   "permlevel": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "final_score",
+   "fieldtype": "Float",
+   "label": "Final Score",
+   "non_negative": 1,
+   "read_only": 1,
+   "permlevel": 1
+  },
+  {
    "fieldname": "column_break_sjzm",
    "fieldtype": "Column Break"
   },
@@ -84,7 +141,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-01 00:00:00.000000",
+ "modified": "2026-11-20 12:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Batch Enrollment",
@@ -146,6 +203,35 @@
    "role": "Course Creator",
    "share": 1,
    "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Moderator",
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Batch Evaluator",
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Course Creator",
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "LMS Student"
   }
  ],
  "row_format": "Dynamic",

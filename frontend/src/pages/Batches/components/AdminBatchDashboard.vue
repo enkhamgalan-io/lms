@@ -24,7 +24,16 @@
 						<span class="text-sm text-ink-gray-6">{{ startsText }}</span>
 					</template>
 				</DashboardKpiCards>
-				<div class="flex min-w-0 flex-1 flex-col lg:min-h-0">
+				<div class="flex min-w-0 flex-1 flex-col gap-2 lg:min-h-0">
+					<div class="flex justify-end">
+						<Button
+							variant="subtle"
+							:loading="recalculate.loading"
+							@click="recalculateGrades"
+						>
+							{{ __('Recalculate grades') }}
+						</Button>
+					</div>
 					<BatchStudentsPanel
 						v-model:stage="stage"
 						v-model:class-filter="classFilter"
@@ -68,7 +77,8 @@
 	/>
 </template>
 <script setup lang="ts">
-import { createResource, getCachedResource } from 'frappe-ui'
+import { Button, createResource, getCachedResource, toast } from 'frappe-ui'
+import { resourceErrorMessage } from '@/utils/resource'
 import { computed, inject, ref } from 'vue'
 import type dayjsType from 'dayjs'
 import DashboardKpiCards from '@/components/Dashboard/DashboardKpiCards.vue'
@@ -337,5 +347,22 @@ const reloadAfterRemoval = (): void => {
 const reloadAfterSheetRemoval = (): void => {
 	reloadAfterRemoval()
 	getCachedResource(['batchDashboardStudents', batchName])?.reload()
+}
+
+// Exam, attendance and progress come from the batch's records; a grader's bonus stays.
+const recalculate = createResource({
+	url: 'lms.lms.dashboard.batch.recalculate_batch_grades',
+})
+const recalculateGrades = (): void => {
+	recalculate
+		.submit({ batch: props.batchName })
+		.then((count: number) =>
+			toast.success(__('Grades recalculated for {0} students').format(count))
+		)
+		.catch((error: unknown) =>
+			toast.error(
+				resourceErrorMessage(error, __('Could not recalculate grades'))
+			)
+		)
 }
 </script>

@@ -32,6 +32,14 @@ export interface LMSBatch {
 	paid_batch?: 0 | 1
 	/**	Seat Count : Int	*/
 	seat_count?: number
+	/**	Grading Method : Select - How a student's final score is worked out. Any bonus is added on top.	*/
+	grading_method?: 'Exam only' | 'Weighted'
+	/**	Exam Weight : Percent	*/
+	exam_weight?: number
+	/**	Attendance Weight : Percent	*/
+	attendance_weight?: number
+	/**	Progress Weight : Percent	*/
+	progress_weight?: number
 	/**	Start Time : Time	*/
 	start_time: string
 	/**	End Time : Time	*/
