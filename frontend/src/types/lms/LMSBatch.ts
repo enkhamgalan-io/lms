@@ -32,6 +32,8 @@ export interface LMSBatch {
 	paid_batch?: 0 | 1
 	/**	Seat Count : Int	*/
 	seat_count?: number
+	/**	Credit Hours : Float - Credited to a learner once they get the batch certificate.	*/
+	credit_hours?: number
 	/**	Start Time : Time	*/
 	start_time: string
 	/**	End Time : Time	*/

@@ -24,6 +24,7 @@
   "timezone",
   "section_break_wuxt",
   "seat_count",
+  "credit_hours",
   "column_break_uamg",
   "category",
   "section_break_cssv",
@@ -135,6 +136,14 @@
    "fieldname": "seat_count",
    "fieldtype": "Int",
    "label": "Seat Count"
+  },
+  {
+   "default": "0",
+   "description": "Credited to a learner once they get the batch certificate.",
+   "fieldname": "credit_hours",
+   "fieldtype": "Float",
+   "label": "Credit Hours",
+   "non_negative": 1
   },
   {
    "fieldname": "start_time",
@@ -469,7 +478,7 @@
    "link_fieldname": "payment_for_document"
   }
  ],
- "modified": "2026-11-18 00:00:03.000000",
+ "modified": "2026-11-20 10:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Batch",

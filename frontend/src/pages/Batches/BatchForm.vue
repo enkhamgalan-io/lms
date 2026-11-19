@@ -71,6 +71,15 @@
 							variant="outline"
 							:placeholder="__('Number of seats available')"
 						/>
+						<FormControl
+							v-model="batchDetail.doc.credit_hours"
+							:label="__('Credit Hours')"
+							type="number"
+							variant="outline"
+							:description="
+								__('Credited to a learner once they get the batch certificate.')
+							"
+						/>
 					</div>
 				</div>
 

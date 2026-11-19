@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 from frappe.database.database import savepoint
 from frappe.model.document import Document
-from frappe.utils import add_days, ceil, nowdate
+from frappe.utils import add_days, ceil, flt, nowdate
 
 from lms.lms.locking import locked_count
 
@@ -86,6 +86,14 @@ class LMSEnrollment(Document):
 
 	def on_update(self):
 		update_program_progress(self.member)
+		self.award_credit_on_completion()
+
+	def award_credit_on_completion(self):
+		if flt(self.progress) < 100 or self.member_type != "Student":
+			return
+		from lms.lms.doctype.lms_credit_entry.lms_credit_entry import award_credit
+
+		award_credit(self.member, "LMS Course", self.course)
 
 	def after_insert(self):
 		self.validate_against_committed_rows()

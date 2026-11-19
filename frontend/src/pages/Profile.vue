@@ -38,6 +38,13 @@
 					>
 						{{ profile.data.headline }}
 					</div>
+					<div
+						v-if="profile.data.credit_hours"
+						class="text-base text-ink-gray-7 mt-1"
+						data-testid="profile-credit-hours"
+					>
+						{{ __('{0} credit hours').format(profile.data.credit_hours) }}
+					</div>
 					<ProfileSocialLinks
 						v-if="
 							profile.data.twitter ||
