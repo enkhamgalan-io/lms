@@ -1,6 +1,12 @@
 <template>
 	<FileUploader
-		:fileTypes="['image/*', 'video/*', 'audio/*', '.pdf']"
+		:fileTypes="[
+			'image/*',
+			'video/*',
+			'audio/*',
+			'.pdf',
+			...DOCUMENT_EXTENSIONS.map((extension) => `.${extension}`),
+		]"
 		:private="true"
 		v-bind="attachArgs"
 		:validateFile="validateFile"
@@ -27,6 +33,7 @@
 import { Button, ErrorMessage, FileUploader } from 'frappe-ui'
 import { nextTick, computed } from 'vue'
 import { AUDIO_EXTENSIONS, isAudioType } from '@/utils/audio'
+import { DOCUMENT_EXTENSIONS } from '@/utils/documents'
 
 const AutoOpen = {
 	props: { open: { type: Function, required: true } },
@@ -72,11 +79,18 @@ const addFile = (file) => {
 const validateFile = (file) => {
 	let extension = file.name.split('.').pop().toLowerCase()
 	if (
-		!['jpg', 'jpeg', 'png', 'mp4', 'mov', 'pdf', ...AUDIO_EXTENSIONS].includes(
-			extension
-		)
+		![
+			'jpg',
+			'jpeg',
+			'png',
+			'mp4',
+			'mov',
+			'pdf',
+			...AUDIO_EXTENSIONS,
+			...DOCUMENT_EXTENSIONS,
+		].includes(extension)
 	) {
-		return __('Upload an image, video, audio or PDF file.')
+		return __('Upload an image, video, audio, PDF or document file.')
 	}
 }
 

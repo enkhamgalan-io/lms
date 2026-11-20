@@ -29,6 +29,11 @@ class LMSCertificate(Document):
 
 	def after_insert(self):
 		self.send_certification_email()
+		# A course's credit comes with its completion; a batch has none but its certificate.
+		if self.batch_name:
+			from lms.lms.doctype.lms_credit_entry.lms_credit_entry import award_credit
+
+			award_credit(self.member, "LMS Batch", self.batch_name)
 
 	def send_certification_email(self):
 		outgoing_email_account = frappe.get_cached_value(

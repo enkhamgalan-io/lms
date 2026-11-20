@@ -14,8 +14,10 @@ from functools import partial
 import frappe
 from frappe import _, safe_decode
 from frappe.core.doctype.file.utils import get_random_filename
+from frappe.email.doctype.email_template.email_template import get_email_template
 from frappe.model.document import Document
 from frappe.utils import (
+	add_days,
 	cint,
 	comma_and,
 	convert_utc_to_system_timezone,
@@ -23,6 +25,7 @@ from frappe.utils import (
 	escape_html,
 	get_datetime,
 	now_datetime,
+	nowdate,
 )
 from frappe.utils.file_manager import safe_b64decode
 from frappe.utils.html_utils import sanitize_html
@@ -49,6 +52,7 @@ from lms.lms.lesson_assessments import RenamableAssessment
 from lms.lms.schedule_utils import assert_within_schedule, validate_schedule_fields
 from lms.lms.utils import (
 	generate_slug,
+	get_lms_route,
 	has_course_instructor_role,
 	has_moderator_role,
 )
@@ -1159,3 +1163,67 @@ def get_question_bank(
 		# non_negative, not > 0) would otherwise be offered to the quiz as worth 1.
 		q["default_marks"] = cint(q["marks"]) if q.get("marks") is not None else 1
 	return questions
+
+
+def send_quiz_reminders():
+	"""Daily: remind each learner of a quiz that opens tomorrow."""
+	from lms.lms.permissions import assessment_audience
+
+	tomorrow = add_days(nowdate(), 1)
+	quizzes = frappe.get_all(
+		"LMS Quiz",
+		filters={"enable_scheduling": 1, "schedule_start": ("between", [tomorrow, tomorrow])},
+		fields=["name", "title", "schedule_start", "schedule_end", "duration"],
+	)
+	for quiz in quizzes:
+		args = {
+			"title": quiz.title,
+			"schedule_start": quiz.schedule_start,
+			"schedule_end": quiz.schedule_end,
+			"duration": quiz.duration,
+			"link": get_lms_route(f"quiz/{quiz.name}"),
+		}
+		for member in assessment_audience("LMS Quiz", quiz.name):
+			send_quiz_email(
+				member,
+				"quiz_reminder_template",
+				_("Your quiz {0} opens tomorrow").format(quiz.title),
+				"quiz_reminder",
+				args,
+			)
+
+
+def send_quiz_email(member: str, template_setting: str, subject: str, template: str, args: dict):
+	"""Send one learner a quiz email, worded by the Email Template LMS Settings names
+	in `template_setting` when one is set. A failure is logged, never raised: it must
+	not undo a grade or stop the other learners' reminders."""
+	messages = len(frappe.local.message_log)
+	frappe.db.savepoint("quiz_email")
+	try:
+		_send_quiz_email(member, template_setting, subject, template, args)
+	except Exception:
+		frappe.db.rollback(save_point="quiz_email")
+		del frappe.local.message_log[messages:]
+		frappe.log_error(title="Quiz email failed", reference_doctype="User", reference_name=member)
+	else:
+		frappe.db.release_savepoint("quiz_email")
+
+
+def _send_quiz_email(member: str, template_setting: str, subject: str, template: str, args: dict):
+	args = {**args, "student_name": frappe.db.get_value("User", member, "full_name")}
+	content = None
+	custom_template = frappe.db.get_single_value("LMS Settings", template_setting)
+	if custom_template:
+		email_template = get_email_template(custom_template, args)
+		subject = email_template.get("subject")
+		content = email_template.get("message")
+
+	frappe.sendmail(
+		recipients=member,
+		subject=subject,
+		template=None if custom_template else template,
+		content=content,
+		args=args,
+		header=[args["title"], "orange"],
+		retry=3,
+	)

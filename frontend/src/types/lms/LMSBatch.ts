@@ -32,6 +32,8 @@ export interface LMSBatch {
 	paid_batch?: 0 | 1
 	/**	Seat Count : Int	*/
 	seat_count?: number
+	/**	Credit Hours : Float - Credited to a learner once they get the batch certificate.	*/
+	credit_hours?: number
 	/**	Grading Method : Select - How a student's final score is worked out. Any bonus is added on top.	*/
 	grading_method?: 'Exam only' | 'Weighted'
 	/**	Exam Weight : Percent	*/

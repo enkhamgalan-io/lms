@@ -107,6 +107,9 @@ READ_ONLY_ENDPOINTS = (
 	"lms.lms.doctype.lms_quiz.lms_quiz.is_open_ended_submission",
 	"lms.lms.email_account.get_email_account",
 	"lms.lms.email_account.get_email_accounts",
+	"lms.lms.learner_calendar.get_calendar_feed",
+	"lms.lms.learner_calendar.get_calendar_feed_url",
+	"lms.lms.learner_calendar.get_my_calendar",
 	"lms.lms.onboarding.get_first_course",
 	"lms.lms.onboarding.get_setup_state",
 	"lms.lms.utils.get_assessments",
@@ -135,6 +138,13 @@ READ_ONLY_ENDPOINTS = (
 	"lms.lms.utils.get_reviews",
 	"lms.lms.utils.get_roles",
 	"lms.raven_provider.get_raven_setup",
+	# Organization reads: the report, and what a member may be enrolled in.
+	"lms.lms.api.get_organization_report",
+	"lms.lms.api.get_member_enrollment_options",
+	# Sums a survey's or poll's answers.
+	"lms.lms.doctype.lms_quiz.lms_quiz.get_quiz_summary",
+	# Sums the course's lesson views.
+	"lms.lms.dashboard.course.get_course_views",
 )
 
 # Writes on GET because something outside LMS makes the request.

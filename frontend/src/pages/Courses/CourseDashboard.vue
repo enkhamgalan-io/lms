@@ -43,6 +43,10 @@
 					class="h-80 lg:h-auto lg:min-h-[13rem] lg:flex-[1.4]"
 					:weekly="stats.data?.weekly ?? null"
 				/>
+				<CourseViewsPanel
+					class="h-96 lg:h-auto lg:min-h-[16rem] lg:flex-[1.4]"
+					:course-name="courseName"
+				/>
 			</div>
 		</div>
 	</div>
@@ -66,6 +70,7 @@ import { openFormRoute } from '@/composables/useFormRoute'
 import { syncDashboardState } from '@/composables/dashboard/useDashboard'
 import router from '@/router'
 import CourseActivityPanel from '@/pages/Courses/components/CourseActivityPanel.vue'
+import CourseViewsPanel from '@/pages/Courses/components/CourseViewsPanel.vue'
 import CourseFeedbackPanel from '@/pages/Courses/components/CourseFeedbackPanel.vue'
 import CourseStudentSheet from '@/pages/Courses/components/CourseStudentSheet.vue'
 import CourseFunnelPanel from '@/pages/Courses/components/CourseFunnelPanel.vue'

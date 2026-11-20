@@ -152,3 +152,4 @@ lms.patches.v2_0.move_public_scorm_to_private
 lms.patches.v2_0.add_course_progress_member_course_index
 lms.patches.v2_0.mark_batch_announcements
 lms.patches.v2_0.add_organizations
+execute:from lms.patches.v2_0.reconcile_custom_docperm_permlevels import reconcile; reconcile(["LMS Quiz"])

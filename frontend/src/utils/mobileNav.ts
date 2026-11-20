@@ -73,6 +73,7 @@ const SECTION_MAP: Record<string, readonly string[]> = {
 	LEARN: [
 		'Programs',
 		'Batches',
+		'Calendar',
 		'Quizzes',
 		'Assignments',
 		'Programming Exercises',

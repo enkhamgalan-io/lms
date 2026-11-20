@@ -266,7 +266,7 @@ export const settingsTree: SettingsGroup[] = [
 								},
 							],
 						},
-						// Both override the notification rule's own wording. Shown
+						// Each overrides its email's built-in wording. Shown
 						// here so a site that set one can clear it.
 						{
 							label: __('Email Templates'),
@@ -292,6 +292,26 @@ export const settingsTree: SettingsGroup[] = [
 									filters: { include_disabled: 1 },
 									description: __(
 										'Replaces the wording of the certification notification.'
+									),
+								},
+								{
+									label: __('Quiz Reminder Template'),
+									name: 'quiz_reminder_template',
+									type: 'link',
+									doctype: 'Email Template',
+									filters: { include_disabled: 1 },
+									description: __(
+										'Replaces the wording of the email sent the day before a scheduled quiz opens.'
+									),
+								},
+								{
+									label: __('Quiz Result Template'),
+									name: 'quiz_result_template',
+									type: 'link',
+									doctype: 'Email Template',
+									filters: { include_disabled: 1 },
+									description: __(
+										'Replaces the wording of the email sent when a quiz submission is graded.'
 									),
 								},
 							],

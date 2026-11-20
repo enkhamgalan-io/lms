@@ -34,6 +34,19 @@ ALLOWED_ASSET_EXTENSIONS = {
 	".wav",
 	".m4a",
 	".pdf",
+	# Documents a lesson offers for download (frontend/src/utils/documents.ts). None is an
+	# active document: a browser downloads them or shows them as plain text.
+	".doc",
+	".docx",
+	".xls",
+	".xlsx",
+	".ppt",
+	".pptx",
+	".odt",
+	".ods",
+	".odp",
+	".csv",
+	".txt",
 }
 MAX_IMPORTED_ASSET_BYTES = 200 * 1024 * 1024
 # Archive root -> is_private, mirroring the URL the content cites. A course can embed

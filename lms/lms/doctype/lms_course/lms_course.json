@@ -26,6 +26,7 @@
   "disable_self_learning",
   "organizations",
   "access_days",
+  "credit_hours",
   "quiz_completion",
   "assignment_completion",
   "programming_exercise_completion",
@@ -114,6 +115,14 @@
    "fieldname": "access_days",
    "fieldtype": "Int",
    "label": "Access Days",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "description": "Credited to a learner once they complete the course.",
+   "fieldname": "credit_hours",
+   "fieldtype": "Float",
+   "label": "Credit Hours",
    "non_negative": 1
   },
   {
@@ -363,7 +372,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2026-11-18 00:00:03.000000",
+ "modified": "2026-11-20 10:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Course",

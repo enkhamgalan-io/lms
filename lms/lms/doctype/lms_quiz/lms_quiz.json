@@ -67,7 +67,8 @@
    "fieldname": "questions",
    "fieldtype": "Table",
    "label": "Questions",
-   "options": "LMS Quiz Question"
+   "options": "LMS Quiz Question",
+   "permlevel": 1
   },
   {
    "fieldname": "lesson",
@@ -238,7 +239,7 @@
    "link_fieldname": "quiz"
   }
  ],
- "modified": "2026-11-18 00:00:04.000000",
+ "modified": "2026-11-19 00:00:01.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Quiz",
@@ -299,6 +300,30 @@
    "report": 1,
    "role": "Batch Evaluator",
    "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Moderator",
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Course Creator",
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Batch Evaluator",
    "write": 1
   }
  ],
