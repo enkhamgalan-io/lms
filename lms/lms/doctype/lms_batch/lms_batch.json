@@ -30,6 +30,11 @@
   "section_break_cssv",
   "evaluation",
   "evaluation_end_date",
+  "grading_section",
+  "grading_method",
+  "exam_weight",
+  "attendance_weight",
+  "progress_weight",
   "column_break_wfkz",
   "certification",
   "section_break_6",
@@ -320,6 +325,40 @@
    "label": "Evaluation End Date"
   },
   {
+   "fieldname": "grading_section",
+   "fieldtype": "Section Break",
+   "label": "Grading"
+  },
+  {
+   "default": "Exam only",
+   "description": "How a student's final score is worked out. Any bonus is added on top.",
+   "fieldname": "grading_method",
+   "fieldtype": "Select",
+   "label": "Grading Method",
+   "options": "Exam only\nWeighted"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.grading_method=='Weighted'",
+   "fieldname": "exam_weight",
+   "fieldtype": "Percent",
+   "label": "Exam Weight"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.grading_method=='Weighted'",
+   "fieldname": "attendance_weight",
+   "fieldtype": "Percent",
+   "label": "Attendance Weight"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.grading_method=='Weighted'",
+   "fieldname": "progress_weight",
+   "fieldtype": "Percent",
+   "label": "Progress Weight"
+  },
+  {
    "depends_on": "paid_batch",
    "description": "If you set an amount here, then the USD equivalent setting will not get applied.",
    "fieldname": "amount_usd",
@@ -478,7 +517,7 @@
    "link_fieldname": "payment_for_document"
   }
  ],
- "modified": "2026-11-20 10:00:00.000000",
+ "modified": "2026-11-20 12:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Batch",

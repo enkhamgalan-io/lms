@@ -53,6 +53,7 @@ from lms.lms.dashboard.common import (
 	_windowed_counts,
 	scored_quiz,
 )
+from lms.lms.doctype.lms_batch_enrollment.lms_batch_enrollment import GRADE_FIELDS
 from lms.lms.doctype.lms_batch_feedback.lms_batch_feedback import feedback_rows, feedback_summary
 from lms.lms.feedback import validate_feedback_page
 from lms.lms.permissions import can_author_batch, evaluator_role_reads_batch
@@ -520,6 +521,9 @@ def get_batch_student_detail(batch: str, enrollment: str) -> dict:
 	)
 	return {
 		**student,
+		"grades": frappe.db.get_value(
+			"LMS Batch Enrollment", enrollment, [*GRADE_FIELDS, "final_score"], as_dict=True
+		),
 		"courses": courses,
 		"classes": classes,
 		"assessments": assessments,
@@ -535,6 +539,65 @@ def get_batch_student_detail(batch: str, enrollment: str) -> dict:
 		if feedback
 		else None,
 	}
+
+
+@frappe.whitelist(methods=["POST"])
+def set_student_grades(batch: str, enrollment: str, grades: dict | str) -> dict:
+	"""Save the scores a grader typed for one student; the controller works out the final score."""
+	_check_batch_dashboard_access(batch)
+	grades = frappe.parse_json(grades)
+	if not isinstance(grades, dict) or set(grades) - set(GRADE_FIELDS):
+		frappe.throw(_("Pass only {0}.").format(", ".join(GRADE_FIELDS)), title=_("Invalid grades"))
+	doc = frappe.get_doc("LMS Batch Enrollment", enrollment)
+	if doc.batch != batch:
+		frappe.throw(_("This student is not enrolled in this batch."), frappe.DoesNotExistError)
+	doc.update({field: flt(value) for field, value in grades.items()})
+	doc.save()
+	return {field: doc.get(field) for field in (*GRADE_FIELDS, "final_score")}
+
+
+@frappe.whitelist(methods=["POST"])
+def recalculate_batch_grades(batch: str) -> int:
+	"""Fill every student's exam, attendance and progress scores from the batch's records.
+	The bonus stays as the grader entered it. Returns how many students were updated."""
+	context = _batch_dashboard_context(batch)
+	query, fields, _enrollment = _batch_students_query(context, None, None)
+	rows = query.select(*fields).run(as_dict=True)
+	exam = _exam_scores(context)
+	courses, held = len(context.courses), len(context.held)
+	for row in rows:
+		doc = frappe.get_doc("LMS Batch Enrollment", row.enrollment)
+		doc.update(
+			{
+				"exam_score": exam.get(row.member, 0.0),
+				"attendance_score": flt(cint(row.attended) * 100 / held, 2) if held else 0.0,
+				"progress_score": flt(flt(row.progress_total) / courses, 2) if courses else 0.0,
+			}
+		)
+		doc.save()
+	return len(rows)
+
+
+def _exam_scores(context: frappe._dict) -> dict:
+	"""``{member: score}``: the mean of each member's best percentage over the batch's scored
+	quizzes, an untaken quiz counting as 0."""
+	Quiz = frappe.qb.DocType("LMS Quiz")
+	quizzes = (
+		frappe.qb.from_(Quiz).select(Quiz.name).where(_isin(Quiz.name, context.quizzes) & scored_quiz(Quiz))
+	).run(pluck=True)
+	if not quizzes:
+		return {}
+	Submission = frappe.qb.DocType("LMS Quiz Submission")
+	best = (
+		frappe.qb.from_(Submission)
+		.select(Submission.member, Submission.quiz, fn.Max(Submission.percentage).as_("best"))
+		.where(Submission.quiz.isin(quizzes))
+		.groupby(Submission.member, Submission.quiz)
+	).run(as_dict=True)
+	totals = {}
+	for row in best:
+		totals[row.member] = totals.get(row.member, 0.0) + flt(row.best)
+	return {member: flt(total / len(quizzes), 2) for member, total in totals.items()}
 
 
 def _average_stars(*ratings) -> float | None:

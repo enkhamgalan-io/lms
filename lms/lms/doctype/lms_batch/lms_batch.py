@@ -11,7 +11,7 @@ from frappe import _
 from frappe.desk.doctype.notification_log.notification_log import make_notification_logs
 from frappe.model.document import Document
 from frappe.query_builder import Bracket
-from frappe.utils import add_days, cint, format_datetime, get_time, getdate, nowdate
+from frappe.utils import add_days, cint, flt, format_datetime, get_time, getdate, nowdate
 from pypika.terms import LiteralValue
 
 from lms.lms.permissions import (
@@ -62,10 +62,36 @@ class LMSBatch(Document):
 		self.validate_timetable()
 		self.validate_evaluation_end_date()
 		self.validate_conferencing_provider()
+		self.validate_grading_weights()
+
+	def validate_grading_weights(self):
+		if self.grading_method != "Weighted":
+			return
+		total = flt(self.exam_weight) + flt(self.attendance_weight) + flt(self.progress_weight)
+		if abs(total - 100) > 0.01:
+			frappe.throw(
+				_("The exam, attendance and progress weights must add up to 100, not {0}.").format(total)
+			)
 
 	def on_update(self):
 		if self.has_value_changed("published") and self.published:
 			frappe.enqueue(send_notification_for_published_batch, batch=self, enqueue_after_commit=True)
+		self.refresh_final_scores()
+
+	def refresh_final_scores(self):
+		"""A change to how the batch grades restates every student's final score."""
+		from lms.lms.doctype.lms_batch_enrollment.lms_batch_enrollment import (
+			GRADE_FIELDS,
+			GRADING_FIELDS,
+			final_score,
+		)
+
+		if not any(self.has_value_changed(field) for field in GRADING_FIELDS):
+			return
+		for row in frappe.get_all(
+			"LMS Batch Enrollment", filters={"batch": self.name}, fields=["name", *GRADE_FIELDS]
+		):
+			frappe.db.set_value("LMS Batch Enrollment", row.name, "final_score", final_score(row, self))
 
 	def on_trash(self):
 		"""Child tables (instructors, courses, timetable, legends) go with the batch itself."""

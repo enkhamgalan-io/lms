@@ -8,6 +8,7 @@ from frappe import _
 from frappe.email.doctype.email_template.email_template import get_email_template
 from frappe.model.document import Document
 from frappe.query_builder import Bracket
+from frappe.utils import flt
 from pypika.terms import LiteralValue
 
 from lms.lms.doctype.lms_enrollment.lms_enrollment import (
@@ -27,6 +28,30 @@ from lms.lms.utils import has_moderator_role
 
 # Roles that keep today's blanket access: every row, every ptype.
 UNSCOPED_ROLES = ("Moderator", "Batch Evaluator")
+
+
+GRADE_FIELDS = ("exam_score", "attendance_score", "progress_score", "bonus_score")
+GRADING_FIELDS = ("grading_method", "exam_weight", "attendance_weight", "progress_weight")
+
+
+def batch_grading(batch: str) -> frappe._dict:
+	return frappe.db.get_value("LMS Batch", batch, GRADING_FIELDS, as_dict=True) or frappe._dict()
+
+
+def final_score(scores, grading) -> float:
+	"""The exam score alone, or the batch's weighted mix of exam, attendance and progress,
+	plus any bonus."""
+	if grading.get("grading_method") == "Weighted":
+		base = (
+			sum(
+				flt(scores.get(f"{part}_score")) * flt(grading.get(f"{part}_weight"))
+				for part in ("exam", "attendance", "progress")
+			)
+			/ 100
+		)
+	else:
+		base = flt(scores.get("exam_score"))
+	return flt(base + flt(scores.get("bonus_score")), 2)
 
 
 class LMSBatchEnrollment(Document):
@@ -66,6 +91,13 @@ class LMSBatchEnrollment(Document):
 		self.validate_self_enrollment()
 		self.validate_organization()
 		self.validate_course_enrollment()
+		self.validate_grades()
+
+	def validate_grades(self):
+		for field in GRADE_FIELDS[:3]:
+			if not 0 <= flt(self.get(field)) <= 100:
+				frappe.throw(_("{0} must be between 0 and 100.").format(_(self.meta.get_label(field))))
+		self.final_score = final_score(self, batch_grading(self.batch))
 
 	def validate_owner(self):
 		if self.flags.via_payment and self.is_new():
