@@ -124,6 +124,7 @@ class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
 			frappe.throw(_("Rows {0} have the duplicate questions.").format(frappe.bold(comma_and(rows))))
 
 	def validate_limit(self):
+		self.apply_random_rules()
 		if not self.shuffle_questions and self.limit_questions_to:
 			self.limit_questions_to = 0
 
@@ -134,6 +135,24 @@ class LMSQuiz(RenamableAssessment, AuthoredDocument, Document):
 			marks = [question.marks for question in self.questions]
 			if len(set(marks)) > 1:
 				frappe.throw(_("All questions should have the same marks if the limit is set."))
+
+	def apply_random_rules(self):
+		"""Rules draw a set number of questions per bank and difficulty from this quiz's own
+		questions, so an attempt is still shuffled and limited to the rules' total."""
+		if not self.random_rules:
+			return
+		banks = question_banks([row.question for row in self.questions])
+		for rule in self.random_rules:
+			available = sum(1 for bank in banks.values() if rule_matches(rule, bank))
+			if cint(rule.count) < 1 or cint(rule.count) > available:
+				frappe.throw(
+					_("Random rule {0}: this quiz has {1} questions from {2} to draw {3} from.").format(
+						rule.idx, available, frappe.bold(rule.question_bank), cint(rule.count)
+					)
+				)
+		total = sum(cint(rule.count) for rule in self.random_rules)
+		self.shuffle_questions = 1
+		self.limit_questions_to = total if total < len(self.questions) else 0
 
 	def calculate_total_marks(self):
 		if len(self.questions) == 0:
@@ -210,8 +229,51 @@ def attempt_question_names(quiz: str, member: str) -> list[str]:
 	names = [name for name in names if name in existing]
 	if not shuffle:
 		return names
-	random.Random(_attempt_seed(quiz, member)).shuffle(names)
+	rng = random.Random(_attempt_seed(quiz, member))
+	rules = frappe.get_all(
+		"LMS Quiz Random Rule",
+		filters={"parent": quiz, "parenttype": "LMS Quiz"},
+		fields=["question_bank", "difficulty", "count"],
+		order_by="idx",
+	)
+	if rules:
+		return _draw_by_rules(names, rules, rng)
+	rng.shuffle(names)
 	return names[: cint(limit)] if cint(limit) else names
+
+
+def _draw_by_rules(names: list[str], rules: list, rng: random.Random) -> list[str]:
+	"""Each rule's count from the questions matching it, in rule order, then shuffled together.
+	A question drawn for one rule is not offered to the next."""
+	banks = question_banks(names)
+	drawn = []
+	for rule in rules:
+		matching = [name for name in names if name not in drawn and rule_matches(rule, banks.get(name))]
+		rng.shuffle(matching)
+		drawn += matching[: cint(rule.count)]
+	rng.shuffle(drawn)
+	return drawn
+
+
+def question_banks(names: list[str]) -> dict:
+	"""``{question: row}`` with each question's bank and difficulty."""
+	if not names:
+		return {}
+	rows = frappe.get_all(
+		"LMS Question", filters={"name": ("in", names)}, fields=["name", "question_bank", "difficulty"]
+	)
+	return {row.name: row for row in rows}
+
+
+def rule_matches(rule, question) -> bool:
+	"""Banks are typed by hand, so case and surrounding spaces do not tell two apart."""
+	if not question or _bank_key(question.question_bank) != _bank_key(rule.question_bank):
+		return False
+	return not rule.difficulty or question.difficulty == rule.difficulty
+
+
+def _bank_key(bank: str | None) -> str:
+	return (bank or "").strip().casefold()
 
 
 def option_order(quiz: str, member: str, question: str) -> list[int]:

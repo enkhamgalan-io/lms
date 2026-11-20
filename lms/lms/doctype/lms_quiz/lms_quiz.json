@@ -26,6 +26,7 @@
   "section_break_tzbu",
   "shuffle_questions",
   "limit_questions_to",
+  "random_rules",
   "shuffle_options",
   "single_session",
   "column_break_clsh",
@@ -152,6 +153,13 @@
    "label": "Limit Questions To"
   },
   {
+   "description": "Draw each attempt's questions bank by bank from this quiz's questions. Sets Shuffle Questions and Limit Questions To from the counts.",
+   "fieldname": "random_rules",
+   "fieldtype": "Table",
+   "label": "Random Rules",
+   "options": "LMS Quiz Random Rule"
+  },
+  {
    "default": "0",
    "fieldname": "shuffle_options",
    "fieldtype": "Check",
@@ -239,7 +247,7 @@
    "link_fieldname": "quiz"
   }
  ],
- "modified": "2026-11-19 00:00:01.000000",
+ "modified": "2026-11-20 16:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Quiz",

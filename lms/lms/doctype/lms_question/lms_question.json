@@ -14,6 +14,8 @@
   "multiple",
   "no_correct_answer",
   "marks",
+  "question_bank",
+  "difficulty",
   "authors",
   "section_break_ytxi",
   "option_1",
@@ -113,6 +115,22 @@
    "in_list_view": 1,
    "label": "Marks",
    "non_negative": 1
+  },
+  {
+   "description": "The bank this question belongs to, such as a law or a topic. A quiz's random rules draw by it.",
+   "fieldname": "question_bank",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Question Bank",
+   "search_index": 1
+  },
+  {
+   "fieldname": "difficulty",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Difficulty",
+   "options": "\nEasy\nMedium\nHard"
   },
   {
    "depends_on": "eval:doc.type == \"Choices\";",
@@ -447,7 +465,7 @@
  "index_web_pages_for_search": 1,
  "links": [],
  "make_attachments_public": 1,
- "modified": "2026-11-18 00:00:04.000000",
+ "modified": "2026-11-20 16:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Question",
