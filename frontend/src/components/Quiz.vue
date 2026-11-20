@@ -596,7 +596,11 @@
 							>
 								{{ passed ? __('Passed') : __('Failed') }}
 							</Badge>
-							<p class="text-base tabular-nums text-ink-gray-8">
+							<p
+								v-if="quizSubmission.data.percentage !== undefined"
+								data-testid="quiz-score"
+								class="text-base tabular-nums text-ink-gray-8"
+							>
 								{{
 									__('{0} of {1} marks').format(
 										quizSubmission.data.score,
@@ -1975,7 +1979,7 @@ const markForReview = (checked: boolean, questionNumber: number): void => {
 }
 
 const getSubmissionColumns = () => {
-	return [
+	const columns = [
 		{
 			label: __('No.'),
 			key: 'idx',
@@ -2005,6 +2009,10 @@ const getSubmissionColumns = () => {
 			width: 1,
 		},
 	]
+	// A quiz that hides its score shows the attempts without their marks.
+	if (quiz.data?.show_score !== 0) return columns
+	const marks = ['score', 'score_out_of', 'percentage']
+	return columns.filter((column) => !marks.includes(column.key))
 }
 
 const getSubmissionOptions = () => {

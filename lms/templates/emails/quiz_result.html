@@ -6,9 +6,15 @@
     {{ _("Your submission for {0} has been graded.").format(title) }}
 </p>
 <br>
+{% if show_score %}
 <p>
     <b>{{ _("Score:") }}</b> {{ score }} / {{ score_out_of }} ({{ percentage }}%)
 </p>
+{% else %}
+<p>
+    <b>{{ _("Result:") }}</b> {{ _("Passed") if passed else _("Not passed") }}
+</p>
+{% endif %}
 <br>
 <p>
     <a href="{{ link }}">👉 {{ _("Open the quiz") }}</a>
