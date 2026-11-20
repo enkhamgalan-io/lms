@@ -76,6 +76,10 @@ export interface LMSSettings {
 	allow_guest_access?: 0 | 1
 	/**	Payment Reminder Template : Link - Email Template	*/
 	payment_reminder_template?: string
+	/**	Quiz Reminder Template : Link - Email Template	*/
+	quiz_reminder_template?: string
+	/**	Quiz Result Template : Link - Email Template	*/
+	quiz_result_template?: string
 	/**	Disable Signup : Check	*/
 	disable_signup?: 0 | 1
 	/**	Meta Description : Small Text - This description will be shown on lists and pages without meta description	*/

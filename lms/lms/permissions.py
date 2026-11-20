@@ -1024,6 +1024,29 @@ def _evaluated_courses(user: str):
 	)
 
 
+def assessment_audience(doctype: str, name: str) -> set:
+	"""Learners an assessment is meant for: active enrollments in a course a
+	student-visible lesson places it in, and members of a batch that runs it.
+
+	shortcut: ignores the sequential lesson lock, fine for announcing a scheduled
+	assessment; check can_access_assessment per member before granting anything."""
+	members = set()
+	courses = list(_course_placements(doctype, name))
+	if courses:
+		rows = frappe.get_all(
+			"LMS Enrollment",
+			filters={"course": ("in", courses)},
+			fields=["member", "valid_until"],
+		)
+		members.update(row.member for row in rows if enrollment_is_active(row.valid_until))
+	batches = _running_batches(doctype, name)
+	if batches:
+		members.update(
+			frappe.get_all("LMS Batch Enrollment", filters={"batch": ("in", batches)}, pluck="member")
+		)
+	return members
+
+
 def _member_reaches_a_placement(course: str, lessons: set) -> bool:
 	"""An already-enrolled member reaches it through a lesson the sequential gate
 	leaves open."""
