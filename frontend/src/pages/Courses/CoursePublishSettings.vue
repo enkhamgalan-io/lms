@@ -163,6 +163,17 @@
 					</template>
 				</template>
 
+				<FormControl
+					v-model="doc.credit_hours"
+					type="number"
+					:label="__('Credit Hours')"
+					:description="
+						__('Credited to a learner once they complete the course.')
+					"
+					variant="outline"
+					@input="markDirty()"
+				/>
+
 				<div
 					v-if="doc?.enable_certification || doc?.paid_certificate"
 					class="flex flex-wrap items-center gap-1 text-p-sm text-ink-gray-6"

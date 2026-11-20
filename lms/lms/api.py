@@ -3771,6 +3771,10 @@ def get_profile_details(username: str):
 	if not is_own_profile and not has_moderator_role():
 		roles = [role for role in roles if role in LMS_ROLES]
 	details.roles = roles
+	if is_own_profile or has_moderator_role():
+		from lms.lms.doctype.lms_credit_entry.lms_credit_entry import total_credit_hours
+
+		details.credit_hours = total_credit_hours(details.name)
 	hide_user_emails([details], "name")
 	return details
 

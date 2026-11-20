@@ -48,6 +48,8 @@ export interface LMSCourse {
 	programming_exercise_completion?: '' | 'Not required' | 'Attempted' | 'Passed'
 	/**	Completion Certificate : Check	*/
 	enable_certification?: 0 | 1
+	/**	Credit Hours : Float - Credited to a learner once they complete the course.	*/
+	credit_hours?: number
 	/**	Related Courses : Table - Related Courses	*/
 	related_courses?: RelatedCourses[]
 	/**	Status : Select	*/
