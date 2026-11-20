@@ -3522,6 +3522,26 @@ def update_test_cases(test_cases: list, submission: str):
 
 
 @frappe.whitelist(methods=["POST"])
+@rate_limit(limit=600, seconds=60 * 60)
+def record_lesson_view(lesson: str) -> None:
+	"""Count a learner opening a lesson, for the course's view analytics. Guests and the
+	course's own staff are not counted."""
+	from lms.lms.doctype.lms_lesson_view.lms_lesson_view import record_view
+	from lms.lms.permissions import can_access_lesson
+
+	if not isinstance(lesson, str):
+		frappe.throw(_("Lesson must be a string."))
+	if frappe.session.user == "Guest":
+		return
+	course = frappe.db.get_value("Course Lesson", lesson, "course")
+	if not course or not can_access_lesson(lesson):
+		frappe.throw(_("You do not have access to this lesson."), frappe.PermissionError)
+	if can_modify_course(course):
+		return
+	record_view(frappe.session.user, course, lesson)
+
+
+@frappe.whitelist(methods=["POST"])
 def track_video_watch_duration(lesson: str, videos: list):
 	"""
 	Track the watch duration of videos in a lesson.

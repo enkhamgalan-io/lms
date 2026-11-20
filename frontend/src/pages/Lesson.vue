@@ -648,6 +648,11 @@ const setupLesson = (data: LessonPayload): void => {
 	if (data.locked) {
 		return
 	}
+	// Counted for the course's view analytics; a failed count must not hold the lesson.
+	if (data.name && realUser.data)
+		call('lms.lms.api.record_lesson_view', { lesson: data.name }).catch(
+			() => {}
+		)
 	if (data.is_scorm_package) {
 		router.push({
 			name: 'SCORMChapter',
