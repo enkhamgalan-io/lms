@@ -14,6 +14,7 @@ import { sidebarSettingsPage } from '@/components/Settings/Sidebar/sidebar'
 // @ts-expect-error TS7016: untyped SFC
 import BrandSettings from '@/components/Settings/BrandSettings.vue'
 import PaymentGateways from '@/components/Settings/PaymentGateways/PaymentGateways.vue'
+import { organizationsSettingsPage } from '@/components/Settings/Members/organizations'
 import Coupons from '@/components/Settings/Coupons/Coupons.vue'
 import { transactionsPage } from '@/components/Settings/Transactions/transactions'
 import { badgeAssignmentsSettingsPage } from '@/components/Settings/Badges/badgeAssignments'
@@ -346,6 +347,15 @@ export const settingsTree: SettingsGroup[] = [
 				icon: 'lucide-user',
 				records: true,
 				page: membersSettingsPage,
+			},
+			{
+				label: __('Organizations'),
+				slug: 'organizations',
+				icon: 'lucide-network',
+				records: true,
+				// Organization Managers read the tree; only Moderators change it.
+				condition: () => Boolean(usersStore().userResource.data?.is_moderator),
+				page: organizationsSettingsPage,
 			},
 			{
 				label: __('Organization Report'),
