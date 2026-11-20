@@ -13,6 +13,7 @@ import { embedFrame } from '@/utils/blockDom'
 import { safeUrl } from '@/utils/safeUrl'
 import translationPlugin from '../translation'
 import { AUDIO_LINK, fileExtension, isAudioType } from '@/utils/audio'
+import { DOCUMENT_TYPES } from '@/utils/documents'
 
 // What the block saves: an uploaded file and, for a video, its in-video quizzes.
 interface UploadData {
@@ -153,7 +154,7 @@ export class Upload {
 						class: 'block',
 						type: 'application/pdf',
 					},
-					__('PDF document'),
+					__('PDF document')
 				)
 				this.wrapper.replaceChildren(...(frame ? [embedCard(frame)] : []))
 				return
@@ -164,6 +165,9 @@ export class Upload {
 			registerDirectives(this.app)
 			this.app.use(translationPlugin)
 			this.app.mount(this.wrapper)
+			return
+		} else if (DOCUMENT_TYPES.has(String(file.file_type).toUpperCase())) {
+			this.renderDownload(file)
 			return
 		} else {
 			const src = safeUrl(file.file_url)
@@ -176,6 +180,30 @@ export class Upload {
 			}
 			return
 		}
+	}
+
+	// No viewer for an office or text file: the learner downloads it.
+	renderDownload(file: UploadedFile): void {
+		const src = safeUrl(file.file_url)
+		if (!src) return
+		const name = decodeURIComponent(src.split('/').pop() || src)
+		const link = document.createElement('a')
+		link.href = src
+		link.setAttribute('download', name)
+		link.className =
+			'flex items-center gap-3 rounded-lg border border-outline-gray-2 px-4 py-3 text-ink-gray-8 no-underline hover:bg-surface-gray-1'
+		link.setAttribute('data-testid', 'file-download')
+		const icon = document.createElement('span')
+		icon.className = 'lucide-file-text size-5 shrink-0 text-ink-gray-6'
+		icon.setAttribute('aria-hidden', 'true')
+		const label = document.createElement('span')
+		label.className = 'min-w-0 flex-1 truncate'
+		label.textContent = name
+		const action = document.createElement('span')
+		action.className = 'shrink-0 text-p-sm text-ink-gray-6'
+		action.textContent = __('Download')
+		link.append(icon, label, action)
+		this.wrapper.replaceChildren(link)
 	}
 
 	renderFileUploader(): void {

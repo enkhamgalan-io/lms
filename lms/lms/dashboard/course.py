@@ -862,6 +862,79 @@ def _student_row(row: frappe._dict, total_lessons: int) -> dict:
 	}
 
 
+VIEW_PERIODS = {"day": 30, "month": 12}
+
+
+def _view_buckets(period: str) -> list:
+	"""The first day of each bucket the span covers, oldest first: the last 30 days, or the
+	last 12 months by their first days."""
+	today = getdate(nowdate())
+	if period == "day":
+		return [add_days(today, -offset) for offset in range(VIEW_PERIODS["day"] - 1, -1, -1)]
+	months, first = [], today.replace(day=1)
+	for _offset in range(VIEW_PERIODS["month"]):
+		months.insert(0, first)
+		first = getdate(add_days(first, -1)).replace(day=1)
+	return months
+
+
+@frappe.whitelist()
+def get_course_views(course: str, period: str = "day") -> dict:
+	"""How often the course's lessons were opened: per day for the last 30 days or per
+	month for the last 12, with how many learners opened them, and its lessons ranked by
+	openings over the same span."""
+	_check_dashboard_access(course)
+	if period not in VIEW_PERIODS:
+		frappe.throw(_("Period must be day or month."))
+	buckets = _view_buckets(period)
+
+	View = frappe.qb.DocType("LMS Lesson View")
+	# shortcut: one row per learner and day for the span, summed here; move the month
+	# grouping into SQL once a course has tens of thousands of active learners.
+	rows = (
+		frappe.qb.from_(View)
+		.select(View.date, View.member, fn.Sum(View["count"]).as_("views"))
+		.where((View.course == course) & (View.date >= buckets[0]))
+		.groupby(View.date, View.member)
+		.run(as_dict=True)
+	)
+	views = {bucket: 0 for bucket in buckets}
+	viewers = {bucket: set() for bucket in buckets}
+	for row in rows:
+		day = getdate(row.date)
+		bucket = day if period == "day" else day.replace(day=1)
+		views[bucket] += cint(row.views)
+		viewers[bucket].add(row.member)
+
+	Lesson = frappe.qb.DocType("Course Lesson")
+	lessons = (
+		frappe.qb.from_(View)
+		.join(Lesson)
+		.on(Lesson.name == View.lesson)
+		.select(
+			View.lesson,
+			fn.Max(Lesson.title).as_("title"),
+			fn.Sum(View["count"]).as_("views"),
+			fn.Count(View.member).distinct().as_("viewers"),
+		)
+		.where((View.course == course) & (View.date >= buckets[0]))
+		.groupby(View.lesson)
+		.orderby(fn.Sum(View["count"]), order=frappe.qb.desc)
+		.limit(10)
+		.run(as_dict=True)
+	)
+	return {
+		"series": [
+			{"period": str(bucket), "views": views[bucket], "viewers": len(viewers[bucket])}
+			for bucket in buckets
+		],
+		"lessons": [
+			{"lesson": row.lesson, "title": row.title, "views": cint(row.views), "viewers": cint(row.viewers)}
+			for row in lessons
+		],
+	}
+
+
 @frappe.whitelist(methods=["POST"])
 def send_course_reminder(course: str, enrollment: str) -> dict:
 	"""Email one student of the course a nudge back to the lesson up next."""

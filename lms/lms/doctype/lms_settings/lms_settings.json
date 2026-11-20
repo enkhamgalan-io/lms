@@ -83,6 +83,8 @@
 		"batch_confirmation_template",
 		"column_break_uwsp",
 		"payment_reminder_template",
+		"quiz_reminder_template",
+		"quiz_result_template",
 		"seo_tab",
 		"meta_description",
 		"meta_image",
@@ -387,6 +389,18 @@
 			"options": "Email Template"
 		},
 		{
+			"fieldname": "quiz_reminder_template",
+			"fieldtype": "Link",
+			"label": "Quiz Reminder Template",
+			"options": "Email Template"
+		},
+		{
+			"fieldname": "quiz_result_template",
+			"fieldtype": "Link",
+			"label": "Quiz Result Template",
+			"options": "Email Template"
+		},
+		{
 			"default": "1",
 			"fieldname": "disable_signup",
 			"fieldtype": "Check",
@@ -602,7 +616,7 @@
 	"index_web_pages_for_search": 1,
 	"issingle": 1,
 	"links": [],
-	"modified": "2026-10-26 16:30:00.000000",
+	"modified": "2026-11-19 10:00:00.000000",
 	"modified_by": "Administrator",
 	"module": "LMS",
 	"name": "LMS Settings",

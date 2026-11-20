@@ -1,0 +1,19 @@
+<p>
+    {{ _("Dear ") }} {{ student_name }},
+</p>
+<br>
+<p>
+    {{ _("Your submission for {0} has been graded.").format(title) }}
+</p>
+<br>
+<p>
+    <b>{{ _("Score:") }}</b> {{ score }} / {{ score_out_of }} ({{ percentage }}%)
+</p>
+<br>
+<p>
+    <a href="{{ link }}">👉 {{ _("Open the quiz") }}</a>
+</p>
+<br>
+<p>
+    {{ _("Best Regards") }}
+</p>
