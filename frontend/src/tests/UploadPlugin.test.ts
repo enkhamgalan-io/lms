@@ -121,9 +121,13 @@ describe('UploadPlugin: what a lesson accepts', () => {
 			expect(check(name)).toBeUndefined()
 	})
 
-	it('refuses a file it cannot show', () => {
-		expect(check('notes.docx')).toBe(
-			'Upload an image, video, audio or PDF file.'
+	it('takes an office document, which the lesson offers for download', () => {
+		expect(check('notes.docx')).toBeUndefined()
+	})
+
+	it('refuses a file it can neither show nor offer', () => {
+		expect(check('setup.exe')).toBe(
+			'Upload an image, video, audio, PDF or document file.'
 		)
 	})
 })
