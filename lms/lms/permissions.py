@@ -1047,6 +1047,21 @@ def assessment_audience(doctype: str, name: str) -> set:
 	return members
 
 
+def in_assessment_audience(doctype: str, name: str, user: str) -> bool:
+	"""Whether `user` is among the learners an assessment is meant for: an active
+	enrollment in a course a student-visible lesson places it in, or a batch that
+	runs it.
+
+	shortcut: ignores the sequential lesson lock, fine for showing a scheduled
+	assessment on a calendar; check can_access_assessment before granting anything."""
+	if _enrolled_in(set(_course_placements(doctype, name)), user):
+		return True
+	batches = _running_batches(doctype, name)
+	return bool(batches) and bool(
+		frappe.db.exists("LMS Batch Enrollment", {"batch": ("in", batches), "member": user})
+	)
+
+
 def _member_reaches_a_placement(course: str, lessons: set) -> bool:
 	"""An already-enrolled member reaches it through a lesson the sequential gate
 	leaves open."""

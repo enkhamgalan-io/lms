@@ -18,6 +18,7 @@ lms.lms.api.get_pwa_manifest
 lms.lms.api.get_sidebar_settings
 lms.lms.api.get_translations
 lms.lms.doctype.course_lesson.course_lesson.serve_resource
+lms.lms.learner_calendar.get_calendar_feed
 lms.lms.user.sign_up
 lms.lms.utils.get_batch_count
 lms.lms.utils.get_batch_courses

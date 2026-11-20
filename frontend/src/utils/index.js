@@ -571,6 +571,15 @@ const getSidebarItems = (forMobile = false) => {
 					activeFor: ['Batches', 'BatchDetail', 'Batch', 'BatchForm'],
 				},
 				{
+					label: 'Calendar',
+					icon: 'Calendar',
+					to: 'Calendar',
+					activeFor: ['Calendar'],
+					condition: () => {
+						return userResource?.data
+					},
+				},
+				{
 					label: 'Certifications',
 					icon: 'GraduationCap',
 					to: 'CertifiedParticipants',
