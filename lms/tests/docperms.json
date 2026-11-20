@@ -628,6 +628,13 @@
 			"export"
 		]
 	},
+	"LMS Lesson View": {
+		"Moderator#0": [
+			"read",
+			"report",
+			"export"
+		]
+	},
 	"LMS Live Class": {
 		"Batch Evaluator#0": [
 			"read",
@@ -680,6 +687,23 @@
 			"share",
 			"report",
 			"export"
+		],
+		"Moderator#0": [
+			"read",
+			"write",
+			"create",
+			"delete",
+			"share",
+			"report",
+			"export"
+		]
+	},
+	"LMS Organization": {
+		"Batch Evaluator#0": [
+			"read"
+		],
+		"Course Creator#0": [
+			"read"
 		],
 		"Moderator#0": [
 			"read",
@@ -878,6 +902,18 @@
 			"share",
 			"report",
 			"export"
+		],
+		"Batch Evaluator#1": [
+			"read",
+			"write"
+		],
+		"Course Creator#1": [
+			"read",
+			"write"
+		],
+		"Moderator#1": [
+			"read",
+			"write"
 		]
 	},
 	"LMS Quiz Submission": {
