@@ -58,6 +58,22 @@
 					/></template>
 				</Button>
 			</Dropdown>
+			<FormControl
+				v-model="question.question_bank"
+				type="text"
+				variant="outline"
+				class="w-40"
+				:placeholder="__('Question bank')"
+				:aria-label="__('Question bank')"
+			/>
+			<FormControl
+				v-model="question.difficulty"
+				type="select"
+				variant="outline"
+				class="w-32"
+				:options="difficultyOptions(__('No difficulty'))"
+				:aria-label="__('Difficulty')"
+			/>
 			<span v-if="usageCount > 1" class="shrink-0">
 				<Badge theme="amber" variant="subtle">
 					{{ __('Used in {0} quizzes').format(usageCount) }}
@@ -128,6 +144,7 @@ import {
 	QUESTION_TYPES,
 	uiTypeMeta,
 	marksLabel,
+	difficultyOptions,
 } from '@/utils/quizQuestion'
 
 const props = defineProps({
