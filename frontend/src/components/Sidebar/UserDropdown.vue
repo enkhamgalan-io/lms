@@ -9,12 +9,14 @@
 		>
 			<template #prefix>
 				<img
-					v-if="branding.data?.banner_image"
-					:src="safeUrl(branding.data?.banner_image.file_url)"
+					:src="
+						branding.data?.banner_image
+							? safeUrl(branding.data.banner_image.file_url)
+							: '/assets/lms/frontend/mojha-emblem.png'
+					"
 					alt=""
 					class="size-full object-cover"
 				/>
-				<LMSLogo v-else class="size-full" />
 			</template>
 		</SidebarHeader>
 	</div>
@@ -32,7 +34,6 @@ import { useSettings } from '@/stores/settings'
 import { h, computed } from 'vue'
 import { createDialog } from '@/utils/dialogs'
 import FrappeCloudIcon from '@/components/Icons/FrappeCloudIcon.vue'
-import LMSLogo from '@/components/Icons/LMSLogo.vue'
 import SettingsModal from '@/components/Settings/Settings.vue'
 import { canOpenSettings } from '@/components/Settings/settings'
 import { safeUrl } from '@/utils/safeUrl'

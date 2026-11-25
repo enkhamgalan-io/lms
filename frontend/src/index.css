@@ -28,6 +28,17 @@ svg.lucide {
 	scale: -1 1;
 }
 
+/* Ministry brand blue (surgalt.mojha.gov.mn) in place of frappe-ui's near-black
+   primary: solid buttons, checkboxes, switches, progress, tooltips, toasts.
+   Light mode only; dark mode keeps frappe-ui's inverted ramp. */
+:root:not([data-theme='dark']) {
+	/* token-exempt-start: these lines define the tokens themselves */
+	--surface-gray-10: #12367e;
+	--surface-gray-9: #1d4592;
+	--surface-gray-8: #2a54a6;
+	/* token-exempt-end */
+}
+
 /* 48px, the desk header's height. The property is the single source so the
    scroll containers below clear exactly the header (WCAG 2.4.11). */
 :root {
@@ -178,7 +189,8 @@ main#main-content {
 [data-slot='trigger']:is([role='combobox'], [data-variant]).text-left:dir(rtl) {
 	text-align: start;
 }
-[data-slot='trigger']:is([role='combobox'], [data-variant]):dir(rtl) > .ml-auto {
+[data-slot='trigger']:is([role='combobox'], [data-variant]):dir(rtl)
+	> .ml-auto {
 	margin-left: 0;
 	margin-inline-start: auto;
 }
