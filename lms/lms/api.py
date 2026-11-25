@@ -4068,6 +4068,34 @@ def search_users_to_enroll(
 
 
 @frappe.whitelist()
+def get_my_lesson_results(lesson: str) -> dict:
+	"""The learner's own standing on a lesson: whether it is complete, and their result on each
+	quiz, assignment and programming exercise it holds. A quiz that hides its score keeps the
+	verdict and drops the number."""
+	from lms.lms.dashboard.common import _lesson_assessment_results
+	from lms.lms.permissions import can_access_lesson
+
+	user = frappe.session.user
+	if user == "Guest" or not isinstance(lesson, str):
+		return {"completed": False, "assessments": []}
+	if not can_access_lesson(lesson):
+		frappe.throw(_("You are not allowed to view this lesson."), frappe.PermissionError)
+
+	assessments = _lesson_assessment_results([lesson], user).get(lesson, [])
+	quizzes = [row["name"] for row in assessments if row["type"] == "quiz"]
+	hidden = set(
+		frappe.get_all("LMS Quiz", filters={"name": ("in", quizzes or [""]), "show_score": 0}, pluck="name")
+	)
+	for row in assessments:
+		if row["name"] in hidden:
+			row["score"] = None
+	completed = frappe.db.exists(
+		"LMS Course Progress", {"lesson": lesson, "member": user, "status": "Complete"}
+	)
+	return {"completed": bool(completed), "assessments": assessments}
+
+
+@frappe.whitelist()
 def get_my_live_classes():
 	my_live_classes = []
 
