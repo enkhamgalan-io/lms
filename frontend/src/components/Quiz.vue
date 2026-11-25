@@ -1044,7 +1044,21 @@ watch(showLeaveConfirmation, (open) => {
 	if (!open && settleLeave) answerLeave(false)
 })
 
+// Staff ended this attempt (remove_from_quiz), which already saved it as a
+// submission, so the screen closes without submitting anything of its own.
+const socket = inject<any>('$socket', null)
+const onRemoved = (data: { quiz?: string }) => {
+	if (data?.quiz !== props.quizName || !activeQuestion.value) return
+	localStorage.removeItem(answerStorageKey.value)
+	stopTimer()
+	resetQuiz()
+	attempts.reload()
+	toast.error(__('An instructor removed you from this quiz attempt.'))
+}
+socket?.on('quiz_removed', onRemoved)
+
 onUnmounted(() => {
+	socket?.off('quiz_removed', onRemoved)
 	removeLeaveGuard()
 	window.removeEventListener('pagehide', handlePageHide)
 	window.removeEventListener('beforeunload', handleBeforeUnload)
