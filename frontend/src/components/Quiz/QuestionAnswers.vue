@@ -49,6 +49,47 @@
 							).format(n)
 						"
 					/>
+					<div
+						v-if="question[`option_${n}_attachment`]"
+						class="flex min-w-0 items-center gap-1.5 text-p-sm text-ink-gray-7"
+					>
+						<span class="lucide-paperclip size-4 shrink-0" aria-hidden="true" />
+						<a
+							class="truncate underline"
+							:href="question[`option_${n}_attachment`]"
+							target="_blank"
+							rel="noopener"
+							>{{ fileName(question[`option_${n}_attachment`]) }}</a
+						>
+						<Button
+							variant="ghost"
+							size="sm"
+							icon="lucide-x"
+							:label="__('Remove the file from option {0}').format(n)"
+							@click="question[`option_${n}_attachment`] = null"
+						/>
+					</div>
+					<FileUploader
+						v-else
+						:private="true"
+						@success="
+							(file) => (question[`option_${n}_attachment`] = file.file_url)
+						"
+					>
+						<template #default="{ uploading, openFileSelector }">
+							<Button
+								variant="ghost"
+								size="sm"
+								:loading="uploading"
+								@click="openFileSelector"
+							>
+								<template #prefix>
+									<span class="lucide-paperclip size-4" aria-hidden="true" />
+								</template>
+								{{ __('Attach an image or file') }}
+							</Button>
+						</template>
+					</FileUploader>
 				</div>
 				<Button
 					v-if="options.removable"
@@ -146,13 +187,14 @@
 </template>
 
 <script setup>
-import { Button, Checkbox, FormControl } from 'frappe-ui'
+import { Button, Checkbox, FileUploader, FormControl } from 'frappe-ui'
 import { computed, nextTick, reactive, ref, useId, watch } from 'vue'
 import {
 	MAX_OPTIONS,
 	REQUIRED_OPTIONS,
 	REQUIRED_POSSIBILITIES,
 	blankOptionFields,
+	fileName,
 	hasRequiredCorrectOptions,
 	hasRequiredOptions,
 	hasRequiredPossibilities,
@@ -204,7 +246,11 @@ const answerRows = ({
 	rows,
 	section,
 }) => {
-	const fields = [prefix, ...companions]
+	// A companion is a prefix (`explanation` → explanation_3) or, for a name the
+	// number sits inside, a function of the row number.
+	const fields = [prefix, ...companions].map((field) =>
+		typeof field === 'function' ? field : (n) => `${field}_${n}`
+	)
 	const blanks = blankOptionFields()
 	const count = ref(minimum)
 	const isRequired = (n) => n <= minimum
@@ -245,11 +291,11 @@ const answerRows = ({
 			if (count.value <= minimum) return
 			for (let n = pos; n < count.value; n++) {
 				for (const field of fields)
-					props.question[`${field}_${n}`] = props.question[`${field}_${n + 1}`]
+					props.question[field(n)] = props.question[field(n + 1)]
 				touched[`${prefix}_${n}`] = touched[`${prefix}_${n + 1}`]
 			}
 			for (const field of fields) {
-				const last = `${field}_${count.value}`
+				const last = field(count.value)
 				props.question[last] = blanks[last]
 			}
 			touched[`${prefix}_${count.value}`] = false
@@ -261,7 +307,7 @@ const answerRows = ({
 const options = answerRows({
 	prefix: 'option',
 	minimum: REQUIRED_OPTIONS,
-	companions: ['is_correct', 'explanation'],
+	companions: ['is_correct', 'explanation', (n) => `option_${n}_attachment`],
 	missing: () => !hasRequiredOptions(props.question),
 	rows: choiceRows,
 	section: choiceSection,

@@ -85,10 +85,22 @@ export const blankOptionFields = () => {
 		fields[`option_${i}`] = null
 		fields[`is_correct_${i}`] = 0
 		fields[`explanation_${i}`] = null
+		fields[`option_${i}_attachment`] = null
 		fields[`possibility_${i}`] = null
 	}
 	return fields
 }
+
+// A file on an answer option shows inline when the browser can draw it, else as a link.
+// The URL may be the gated serve endpoint, whose query still ends in the file's name.
+export const isImageFile = (url) =>
+	/\.(png|jpe?g|gif|webp|svg)$/i.test(url ?? '')
+export const fileName = (url) =>
+	decodeURIComponent(
+		String(url ?? '')
+			.split(/%2F|\//i)
+			.pop() ?? ''
+	)
 
 // Two whole strings, one per grammatical number, so a translator can reach both.
 export const marksLabel = (n) =>
