@@ -230,6 +230,7 @@ watchEffect(() => {
 	let target = {
 		About: { name: 'ProfileAbout' },
 		Certificates: { name: 'ProfileCertificates' },
+		History: { name: 'ProfileHistory' },
 		Roles: { name: 'ProfileRoles' },
 		Slots: { name: 'ProfileEvaluator' },
 		Schedule: { name: 'ProfileEvaluationSchedule' },
@@ -299,6 +300,10 @@ const getTabButtons = () => {
 		{ label: __('About'), value: 'About' },
 		{ label: __('Certificates'), value: 'Certificates' },
 	]
+	// Dates, scores and credits are the member's own, read by them and the staff over them.
+	if (isSessionUser() || $user.data?.is_moderator) {
+		buttons.push({ label: __('History'), value: 'History' })
+	}
 	if ($user.data?.is_moderator) {
 		buttons.push({ label: __('Roles'), value: 'Roles' })
 	}

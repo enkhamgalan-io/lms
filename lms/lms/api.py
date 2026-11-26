@@ -3732,6 +3732,129 @@ def get_pwa_manifest():
 
 
 @frappe.whitelist()
+def get_learning_history(username: str) -> list[dict]:
+	"""Every course and batch a member has taken part in: when they joined and finished it,
+	their score, the credit hours it earned and its certificate. Only the member and the staff
+	who manage them may read it."""
+	if not isinstance(username, str) or not username.strip():
+		frappe.throw(_("Username is required."))
+	member = frappe.db.get_value("User", {"username": username.strip()}, "name")
+	if not member or (member != frappe.session.user and not can_manage_member(member)):
+		frappe.throw(_("You are not permitted to view this learning history."), frappe.PermissionError)
+
+	credits = {
+		(row.source_type, row.source): row
+		for row in frappe.get_all(
+			"LMS Credit Entry", {"member": member}, ["source_type", "source", "hours", "date"]
+		)
+	}
+	certificates = {}
+	for row in frappe.get_all(
+		"LMS Certificate", {"member": member}, ["name", "course", "batch_name", "issue_date"]
+	):
+		key = ("LMS Batch", row.batch_name) if row.batch_name else ("LMS Course", row.course)
+		certificates.setdefault(key, row)
+
+	def history_row(kind, doctype, name, title, joined, completed_on, progress, score):
+		credit = credits.get((doctype, name))
+		certificate = certificates.get((doctype, name))
+		return {
+			"type": kind,
+			"name": name,
+			"title": title,
+			"enrolled_on": getdate(joined),
+			"completed_on": completed_on
+			or (certificate and certificate.issue_date)
+			or (credit and credit.date),
+			"progress": progress,
+			"score": score,
+			"credit_hours": credit.hours if credit else 0,
+			"certificate": certificate.name if certificate else None,
+		}
+
+	rows = []
+	enrollments = frappe.get_all("LMS Enrollment", {"member": member}, ["course", "progress", "creation"])
+	courses = [row.course for row in enrollments]
+	titles = dict(
+		frappe.get_all("LMS Course", {"name": ("in", courses or [""])}, ["name", "title"], as_list=True)
+	)
+	progress = frappe.qb.DocType("LMS Course Progress")
+	finished = dict(
+		frappe.qb.from_(progress)
+		.select(progress.course, fn.Max(progress.modified))
+		.where((progress.member == member) & (progress.status == "Complete"))
+		.groupby(progress.course)
+		.run()
+	)
+	scores = _course_quiz_scores(member)
+	for row in enrollments:
+		done = flt(row.progress) >= 100
+		rows.append(
+			history_row(
+				"course",
+				"LMS Course",
+				row.course,
+				titles.get(row.course, row.course),
+				row.creation,
+				getdate(finished[row.course]) if done and finished.get(row.course) else None,
+				flt(row.progress),
+				scores.get(row.course),
+			)
+		)
+
+	batch_enrollments = frappe.get_all(
+		"LMS Batch Enrollment", {"member": member}, ["batch", "final_score", "creation"]
+	)
+	batches = {
+		row.name: row
+		for row in frappe.get_all(
+			"LMS Batch",
+			{"name": ("in", [row.batch for row in batch_enrollments] or [""])},
+			["name", "title", "end_date"],
+		)
+	}
+	today = getdate()
+	for row in batch_enrollments:
+		batch = batches.get(row.batch) or frappe._dict(title=row.batch)
+		ended = batch.end_date if batch.end_date and getdate(batch.end_date) < today else None
+		rows.append(
+			history_row(
+				"batch", "LMS Batch", row.batch, batch.title, row.creation, ended, None, row.final_score
+			)
+		)
+
+	rows.sort(key=lambda row: row["enrolled_on"], reverse=True)
+	return rows
+
+
+def _course_quiz_scores(member: str) -> dict[str, float]:
+	"""Per course, the mean of the member's best percentage on each graded quiz they took."""
+	submissions = frappe.get_all(
+		"LMS Quiz Submission", {"member": member, "course": ("is", "set")}, ["quiz", "course", "percentage"]
+	)
+	opinion = set(
+		frappe.get_all(
+			"LMS Quiz",
+			{
+				"name": ("in", [row.quiz for row in submissions] or [""]),
+				"quiz_type": ("in", ("Survey", "Poll")),
+			},
+			pluck="name",
+		)
+	)
+	best: dict[tuple[str, str], float] = {}
+	for row in submissions:
+		if row.quiz in opinion:
+			continue
+		key = (row.course, row.quiz)
+		best[key] = max(best.get(key, 0.0), flt(row.percentage))
+	by_course: dict[str, list[float]] = {}
+	for (course, _quiz), percentage in best.items():
+		by_course.setdefault(course, []).append(percentage)
+	return {course: round(sum(values) / len(values), 1) for course, values in by_course.items()}
+
+
+@frappe.whitelist()
 def get_profile_details(username: str):
 	if not isinstance(username, str) or not username.strip():
 		frappe.throw(_("Username is required."))
