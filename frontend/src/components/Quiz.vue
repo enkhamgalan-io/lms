@@ -388,11 +388,25 @@
 													@change="markAnswer(index)"
 												/>
 											</template>
-											<span
-												v-safe-html:rich="
-													questionDetails.data[`option_${index}`]
-												"
-											></span>
+											<span class="flex min-w-0 flex-col gap-1.5">
+												<span
+													v-safe-html:rich="
+														questionDetails.data[`option_${index}`]
+													"
+												></span>
+												<img
+													v-if="
+														isImageFile(
+															questionDetails.data[`option_${index}_attachment`]
+														)
+													"
+													:src="
+														questionDetails.data[`option_${index}_attachment`]
+													"
+													alt=""
+													class="max-h-48 max-w-full rounded-4 object-contain"
+												/>
+											</span>
 											<template
 												v-if="showAnswers.length && quiz.data.show_answers"
 												#end
@@ -426,6 +440,29 @@
 												</template>
 											</template>
 										</OptionRow>
+										<!-- Outside the row's label, so opening it does not pick the option. -->
+										<a
+											v-if="
+												questionDetails.data[`option_${index}_attachment`] &&
+												!isImageFile(
+													questionDetails.data[`option_${index}_attachment`]
+												)
+											"
+											:href="questionDetails.data[`option_${index}_attachment`]"
+											target="_blank"
+											rel="noopener"
+											class="flex items-center gap-1.5 px-3 text-p-sm text-ink-gray-7 underline"
+										>
+											<span
+												class="lucide-paperclip size-4 shrink-0"
+												aria-hidden="true"
+											/>
+											{{
+												fileName(
+													questionDetails.data[`option_${index}_attachment`]
+												)
+											}}
+										</a>
 										<div
 											v-if="questionDetails.data[`explanation_${index}`]"
 											v-show="showAnswers.length"
@@ -927,6 +964,7 @@ import OptionRow from '@/components/Assessment/OptionRow.vue'
 import FeedbackBanner from '@/components/Assessment/FeedbackBanner.vue'
 import QuizStats from '@/components/Assessment/QuizStats.vue'
 import { attemptsLeftLabel, formatQuizSubtitle } from '@/utils/quizSummary'
+import { fileName, isImageFile } from '@/utils/quizQuestion'
 import type {
 	AnswerVerdict,
 	QuizAttempt,

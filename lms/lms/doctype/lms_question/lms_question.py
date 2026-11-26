@@ -20,10 +20,11 @@ QUESTION_OPTION_FIELDS = [f"option_{i}" for i in range(1, 11)]
 QUESTION_CORRECTNESS_FIELDS = [f"is_correct_{i}" for i in range(1, 11)]
 QUESTION_EXPLANATION_FIELDS = [f"explanation_{i}" for i in range(1, 11)]
 QUESTION_POSSIBILITY_FIELDS = [f"possibility_{i}" for i in range(1, 11)]
+QUESTION_ATTACHMENT_FIELDS = [f"option_{i}_attachment" for i in range(1, 11)]
 
 # Prompt/options ship with the quiz attempt; explanations are answer-key material
 # and are gated harder (see can_view_quiz_answers).
-STUDENT_QUESTION_FIELDS = ("question", *QUESTION_OPTION_FIELDS)
+STUDENT_QUESTION_FIELDS = ("question", *QUESTION_OPTION_FIELDS, *QUESTION_ATTACHMENT_FIELDS)
 QUESTION_MEDIA_FIELDS = (*STUDENT_QUESTION_FIELDS, *QUESTION_EXPLANATION_FIELDS)
 
 
@@ -37,6 +38,7 @@ def validate_correct_answers(question):
 	if question.type == "Choices":
 		validate_duplicate_options(question)
 		validate_minimum_options(question)
+		validate_option_attachments(question)
 		if question.no_correct_answer:
 			# An opinion question: no option is right, and `multiple` stays the author's.
 			for field in QUESTION_CORRECTNESS_FIELDS:
@@ -68,6 +70,15 @@ def validate_correct_options(question):
 def validate_minimum_options(question):
 	if question.type == "Choices" and (not question.option_1 or not question.option_2):
 		frappe.throw(_("Minimum two options are required for multiple choice questions."))
+
+
+def validate_option_attachments(question):
+	# Answers are graded by the option's text, so a file needs text beside it to be pickable.
+	for i, (option, attachment) in enumerate(
+		zip(QUESTION_OPTION_FIELDS, QUESTION_ATTACHMENT_FIELDS, strict=True), start=1
+	):
+		if question.get(attachment) and not question.get(option):
+			frappe.throw(_("Option {0} has a file but no text. Add text for it.").format(i))
 
 
 def validate_possible_answer(question):

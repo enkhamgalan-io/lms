@@ -6,6 +6,7 @@ vi.mock('frappe-ui', () => ({
 	Badge: { template: '<span><slot /></span>' },
 	Dropdown: { template: '<div><slot /></div>' },
 	FormControl: { template: '<input />' },
+	FileUploader: { template: '<div><slot /></div>' },
 	FormLabel: { template: '<label />' },
 }))
 

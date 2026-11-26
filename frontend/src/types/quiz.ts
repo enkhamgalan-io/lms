@@ -11,7 +11,12 @@ export type QuizQuestionDetails = {
 	// Option numbers in display order, sent when the quiz shuffles its options.
 	option_order?: number[]
 } & {
-	[key: `option_${number}` | `explanation_${number}`]: string | null | undefined
+	[
+		key:
+			| `option_${number}`
+			| `explanation_${number}`
+			| `option_${number}_attachment`
+	]: string | null | undefined
 }
 
 /** A row of the quiz's question table. */

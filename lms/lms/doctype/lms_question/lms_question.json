@@ -20,51 +20,61 @@
   "section_break_ytxi",
   "option_1",
   "is_correct_1",
+  "option_1_attachment",
   "column_break_fpvl",
   "explanation_1",
   "section_break_eiaa",
   "option_2",
   "is_correct_2",
+  "option_2_attachment",
   "column_break_akwy",
   "explanation_2",
   "section_break_cwqv",
   "option_3",
   "is_correct_3",
+  "option_3_attachment",
   "column_break_atpl",
   "explanation_3",
   "section_break_yqel",
   "option_4",
   "is_correct_4",
+  "option_4_attachment",
   "column_break_lknb",
   "explanation_4",
   "section_break_opt_5",
   "option_5",
   "is_correct_5",
+  "option_5_attachment",
   "column_break_opt_5",
   "explanation_5",
   "section_break_opt_6",
   "option_6",
   "is_correct_6",
+  "option_6_attachment",
   "column_break_opt_6",
   "explanation_6",
   "section_break_opt_7",
   "option_7",
   "is_correct_7",
+  "option_7_attachment",
   "column_break_opt_7",
   "explanation_7",
   "section_break_opt_8",
   "option_8",
   "is_correct_8",
+  "option_8_attachment",
   "column_break_opt_8",
   "explanation_8",
   "section_break_opt_9",
   "option_9",
   "is_correct_9",
+  "option_9_attachment",
   "column_break_opt_9",
   "explanation_9",
   "section_break_opt_10",
   "option_10",
   "is_correct_10",
+  "option_10_attachment",
   "column_break_opt_10",
   "explanation_10",
   "section_break_hkfe",
@@ -150,6 +160,12 @@
    "label": "Is Correct 1"
   },
   {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_1_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 1 Attachment"
+  },
+  {
    "fieldname": "column_break_fpvl",
    "fieldtype": "Column Break"
   },
@@ -175,6 +191,12 @@
    "fieldname": "is_correct_2",
    "fieldtype": "Check",
    "label": "Is Correct 2"
+  },
+  {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_2_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 2 Attachment"
   },
   {
    "fieldname": "column_break_akwy",
@@ -203,6 +225,12 @@
    "label": "Is Correct 3"
   },
   {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_3_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 3 Attachment"
+  },
+  {
    "fieldname": "column_break_atpl",
    "fieldtype": "Column Break"
   },
@@ -227,6 +255,12 @@
    "fieldname": "is_correct_4",
    "fieldtype": "Check",
    "label": "Is Correct 4"
+  },
+  {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_4_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 4 Attachment"
   },
   {
    "fieldname": "column_break_lknb",
@@ -255,6 +289,12 @@
    "label": "Is Correct 5"
   },
   {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_5_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 5 Attachment"
+  },
+  {
    "fieldname": "column_break_opt_5",
    "fieldtype": "Column Break"
   },
@@ -279,6 +319,12 @@
    "fieldname": "is_correct_6",
    "fieldtype": "Check",
    "label": "Is Correct 6"
+  },
+  {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_6_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 6 Attachment"
   },
   {
    "fieldname": "column_break_opt_6",
@@ -307,6 +353,12 @@
    "label": "Is Correct 7"
   },
   {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_7_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 7 Attachment"
+  },
+  {
    "fieldname": "column_break_opt_7",
    "fieldtype": "Column Break"
   },
@@ -331,6 +383,12 @@
    "fieldname": "is_correct_8",
    "fieldtype": "Check",
    "label": "Is Correct 8"
+  },
+  {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_8_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 8 Attachment"
   },
   {
    "fieldname": "column_break_opt_8",
@@ -359,6 +417,12 @@
    "label": "Is Correct 9"
   },
   {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_9_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 9 Attachment"
+  },
+  {
    "fieldname": "column_break_opt_9",
    "fieldtype": "Column Break"
   },
@@ -383,6 +447,12 @@
    "fieldname": "is_correct_10",
    "fieldtype": "Check",
    "label": "Is Correct 10"
+  },
+  {
+   "depends_on": "eval: doc.type == 'Choices'",
+   "fieldname": "option_10_attachment",
+   "fieldtype": "Attach",
+   "label": "Option 10 Attachment"
   },
   {
    "fieldname": "column_break_opt_10",
@@ -465,7 +535,7 @@
  "index_web_pages_for_search": 1,
  "links": [],
  "make_attachments_public": 1,
- "modified": "2026-11-20 16:00:00.000000",
+ "modified": "2026-11-25 00:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Question",

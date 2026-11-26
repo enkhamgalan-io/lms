@@ -2488,6 +2488,7 @@ def get_quiz_with_questions(quiz: str) -> dict:
 	the UI can show the availability message.
 	"""
 	from lms.lms.doctype.lms_question.lms_question import (
+		QUESTION_ATTACHMENT_FIELDS,
 		QUESTION_EXPLANATION_FIELDS,
 		QUESTION_OPTION_FIELDS,
 	)
@@ -2537,6 +2538,7 @@ def get_quiz_with_questions(quiz: str) -> dict:
 				"type",
 				"multiple",
 				*QUESTION_OPTION_FIELDS,
+				*QUESTION_ATTACHMENT_FIELDS,
 			]
 			if can_view_quiz_answers(quiz, quiz_doc.get("show_answers")):
 				fields += QUESTION_EXPLANATION_FIELDS
@@ -2567,11 +2569,17 @@ def _rewrite_question_private_media(row: dict) -> dict:
 	and every reader hits the access-gated endpoint instead of /private/files/.
 	"""
 	from lms.lms.doctype.lms_question.lms_question import (
+		QUESTION_ATTACHMENT_FIELDS,
 		QUESTION_EXPLANATION_FIELDS,
 		QUESTION_OPTION_FIELDS,
 	)
 
-	for field in ("question", *QUESTION_OPTION_FIELDS, *QUESTION_EXPLANATION_FIELDS):
+	for field in (
+		"question",
+		*QUESTION_OPTION_FIELDS,
+		*QUESTION_ATTACHMENT_FIELDS,
+		*QUESTION_EXPLANATION_FIELDS,
+	):
 		if row.get(field):
 			row[field] = rewrite_private_media(row[field], QUESTION_PRIVATE_MEDIA_ENDPOINT)
 	return row
