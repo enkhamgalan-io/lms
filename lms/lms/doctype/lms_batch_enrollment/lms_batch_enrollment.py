@@ -5,7 +5,6 @@ import json
 
 import frappe
 from frappe import _
-from frappe.email.doctype.email_template.email_template import get_email_template
 from frappe.model.document import Document
 from frappe.query_builder import Bracket
 from frappe.utils import flt
@@ -24,7 +23,7 @@ from lms.lms.permissions import (
 	hidden_by_organization,
 	is_site_administrator,
 )
-from lms.lms.utils import has_moderator_role
+from lms.lms.utils import has_moderator_role, render_email_template
 
 # Roles that keep today's blanket access: every row, every ptype.
 UNSCOPED_ROLES = ("Moderator", "Batch Evaluator")
@@ -281,7 +280,7 @@ def send_mail(doc):
 	}
 
 	if custom_template:
-		email_template = get_email_template(custom_template, args)
+		email_template = render_email_template(custom_template, args)
 		subject = email_template.get("subject")
 		content = email_template.get("message")
 

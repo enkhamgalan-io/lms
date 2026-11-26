@@ -1,0 +1,23 @@
+<p>
+    {{ _("Dear") }} {{ student_name }},
+</p>
+<br>
+<p>
+    {{ _("You have been enrolled in the course {0}.").format(title) }}
+</p>
+{% if valid_until %}
+<p>
+    <b>{{ _("Open to you until:") }}</b> {{ frappe.utils.format_date(valid_until, "medium") }}
+</p>
+{% endif %}
+<br>
+<p>
+    <a href="{{ get_lms_route('courses/' ~ name) }}">{{ _("Start the course") }}</a>
+</p>
+<p>
+    {{ _("If you have any questions or require assistance, feel free to contact us.") }}
+</p>
+<br>
+<p>
+    {{ _("Best Regards") }}
+</p>

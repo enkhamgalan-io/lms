@@ -99,6 +99,33 @@ class LMSEnrollment(Document):
 		self.validate_against_committed_rows()
 		if self.member_type == "Student":
 			_update_course_enrollments(self.course, increment=True)
+			if self.enrolled_by_someone_else():
+				self.send_enrollment_email_or_log()
+
+	def enrolled_by_someone_else(self) -> bool:
+		"""Staff or HR placed the member here. A learner who enrolled themselves, paid, or
+		came with a batch (which sends its own email) needs no news of it."""
+		return not (
+			self.enrollment_from_batch
+			or self.flags.via_batch_enrollment
+			or self.flags.via_payment
+			or frappe.session.user in (self.member, "Guest")
+		)
+
+	def send_enrollment_email_or_log(self):
+		"""As the batch confirmation does: a failed email never undoes the enrollment."""
+		messages = len(frappe.local.message_log)
+		frappe.db.savepoint("course_enrollment_email")
+		try:
+			send_enrollment_email(self)
+		except Exception:
+			frappe.db.rollback(save_point="course_enrollment_email")
+			del frappe.local.message_log[messages:]
+			frappe.log_error(
+				title="Course enrollment email failed",
+				reference_doctype=self.doctype,
+				reference_name=self.name,
+			)
 
 	def after_delete(self):
 		if self.member_type == "Student":
@@ -327,3 +354,36 @@ def _write_enrollment(name: str, values: dict):
 	enrollment.update(changed)
 	enrollment.run_method("on_update")
 	enrollment.run_method("on_change")
+
+
+def send_enrollment_email(enrollment):
+	from lms.lms.utils import render_email_template
+
+	if not (
+		frappe.get_cached_value("Email Account", {"default_outgoing": 1, "enable_outgoing": 1}, "name")
+		or frappe.conf.get("mail_login")
+	):
+		return
+	course = frappe.db.get_value("LMS Course", enrollment.course, ["name", "title"], as_dict=True)
+	args = {
+		"title": course.title,
+		"student_name": enrollment.member_name or enrollment.member,
+		"name": course.name,
+		"valid_until": enrollment.valid_until,
+	}
+	subject = _("You have been enrolled in {0}").format(course.title)
+	content = None
+	custom_template = frappe.db.get_single_value("LMS Settings", "course_enrollment_template")
+	if custom_template:
+		email_template = render_email_template(custom_template, args)
+		subject = email_template.get("subject")
+		content = email_template.get("message")
+	frappe.sendmail(
+		recipients=enrollment.member,
+		subject=subject,
+		template=None if custom_template else "course_enrollment",
+		content=content,
+		args=args,
+		header=[_(course.title), "green"],
+		retry=3,
+	)
