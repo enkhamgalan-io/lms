@@ -216,3 +216,11 @@ export const isQuestionValid = (question, uiType) => {
 	// open_ended: the question text is the only requirement.
 	return true
 }
+
+// LMS Question.difficulty. The empty value means none, or any in a random rule.
+export const difficultyOptions = (emptyLabel) => [
+	{ label: emptyLabel, value: '' },
+	{ label: __('Easy'), value: 'Easy' },
+	{ label: __('Medium'), value: 'Medium' },
+	{ label: __('Hard'), value: 'Hard' },
+]
