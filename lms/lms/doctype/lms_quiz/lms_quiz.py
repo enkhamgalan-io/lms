@@ -380,6 +380,7 @@ def submit_quiz(
 			"schedule_end",
 			"single_session",
 			"quiz_type",
+			"show_score",
 		],
 		as_dict=1,
 	)
@@ -435,13 +436,19 @@ def submit_quiz(
 			"summary": quiz_summary(quiz) if quiz_details.quiz_type == "Poll" else None,
 		}
 
-	return {
-		"score": submission.score,
-		"score_out_of": submission.score_out_of,
+	result = {
 		"submission": submission.name,
 		"pass": percentage >= quiz_details.passing_percentage,
-		"percentage": percentage,
 		"is_open_ended": is_open_ended,
+	}
+	if not quiz_details.show_score:
+		# The verdict alone: marks, percentage and the correct count all give the score away.
+		return result
+	return {
+		**result,
+		"score": submission.score,
+		"score_out_of": submission.score_out_of,
+		"percentage": percentage,
 		**_answer_counts(data["results"], _attempt_size(quiz_details)),
 	}
 

@@ -13,6 +13,7 @@
   "authors",
   "max_attempts",
   "show_answers",
+  "show_score",
   "show_submission_history",
   "column_break_gaac",
   "total_marks",
@@ -106,6 +107,13 @@
    "fieldtype": "Check",
    "in_standard_filter": 1,
    "label": "Show Answers"
+  },
+  {
+   "default": "1",
+   "description": "Off shows learners only whether they passed, never their marks.",
+   "fieldname": "show_score",
+   "fieldtype": "Check",
+   "label": "Show Score"
   },
   {
    "fieldname": "column_break_gaac",
@@ -247,7 +255,7 @@
    "link_fieldname": "quiz"
   }
  ],
- "modified": "2026-11-20 16:00:00.000000",
+ "modified": "2026-11-20 17:00:00.000000",
  "modified_by": "sayali@frappe.io",
  "module": "LMS",
  "name": "LMS Quiz",

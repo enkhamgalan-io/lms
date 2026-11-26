@@ -121,16 +121,26 @@ class LMSQuizSubmission(Document):
 			# Floored at zero, or negative marking throws the whole submission away.
 			self.percentage = max(0, (self.score / self.score_out_of) * 100)
 
+	def quiz_shows_score(self) -> bool:
+		return bool(frappe.db.get_value("LMS Quiz", self.quiz, "show_score"))
+
 	def notify_member(self):
 		if self.score != 0 and self.has_value_changed("score"):
+			if self.quiz_shows_score():
+				subject = _("You have got a score of {0} for the quiz {1}").format(
+					(frappe.bold(self.score)), frappe.bold(self.quiz_title)
+				)
+				content = _(
+					"There has been an update on your submission. You have got a score of {0} for the quiz {1}"
+				).format(frappe.bold(self.score), frappe.bold(self.quiz_title))
+			else:
+				subject = content = _("Your submission for {0} has been graded").format(
+					frappe.bold(self.quiz_title)
+				)
 			notification = frappe._dict(
 				{
-					"subject": _("You have got a score of {0} for the quiz {1}").format(
-						(frappe.bold(self.score)), frappe.bold(self.quiz_title)
-					),
-					"email_content": _(
-						"There has been an update on your submission. You have got a score of {0} for the quiz {1}"
-					).format(frappe.bold(self.score), frappe.bold(self.quiz_title)),
+					"subject": subject,
+					"email_content": content,
 					"document_type": self.doctype,
 					"document_name": self.name,
 					"for_user": self.member,
@@ -148,6 +158,7 @@ class LMSQuizSubmission(Document):
 			return
 		from lms.lms.doctype.lms_quiz.lms_quiz import send_quiz_email
 
+		show_score = self.quiz_shows_score()
 		send_quiz_email(
 			self.member,
 			"quiz_result_template",
@@ -155,9 +166,11 @@ class LMSQuizSubmission(Document):
 			"quiz_result",
 			{
 				"title": self.quiz_title,
-				"score": self.score,
-				"score_out_of": self.score_out_of,
-				"percentage": self.percentage,
+				"show_score": show_score,
+				"score": self.score if show_score else None,
+				"score_out_of": self.score_out_of if show_score else None,
+				"percentage": self.percentage if show_score else None,
+				"passed": (self.percentage or 0) >= (self.passing_percentage or 0),
 				"link": get_lms_route(f"quiz/{self.quiz}"),
 			},
 		)

@@ -319,6 +319,16 @@
 						"
 					/>
 					<BooleanSwitch
+						v-model="doc.show_score"
+						size="sm"
+						:label="__('Show Score')"
+						:description="
+							__(
+								'Off shows learners only whether they passed, never their marks.'
+							)
+						"
+					/>
+					<BooleanSwitch
 						v-model="doc.show_submission_history"
 						size="sm"
 						:label="__('Show Submission History')"

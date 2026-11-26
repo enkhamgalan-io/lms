@@ -24,6 +24,8 @@ export interface LMSQuiz {
 	course?: string
 	/**	Show Answers : Check	*/
 	show_answers?: 0 | 1
+	/**	Show Score : Check - Off shows learners only whether they passed, never their marks.	*/
+	show_score?: 0 | 1
 	/**	Show Submission History : Check	*/
 	show_submission_history?: 0 | 1
 	/**	Passing Percentage : Int	*/
