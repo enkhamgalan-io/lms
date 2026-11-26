@@ -151,6 +151,9 @@ class LMSCourse(Document):
 			self.send_email_to_interested_users()
 
 	def on_trash(self):
+		from lms.lms.utils import delete_discussions
+
+		delete_discussions("LMS Course", self.name)
 		for doctype in COURSE_OWNED_DOCTYPES:
 			frappe.db.delete(doctype, {"course": self.name})
 		self._remove_from_programs()

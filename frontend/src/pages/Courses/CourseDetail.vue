@@ -154,6 +154,19 @@
 			<SkeletonLoader v-else variant="course-page" />
 		</template>
 
+		<template #tab-body-discussions>
+			<div class="mx-auto mt-5 w-[90%] lg:w-[75%]">
+				<Discussions
+					doctype="LMS Course"
+					:docname="course.data.name"
+					:title="__('Discussions')"
+					heading-size="lg"
+					:key="course.data.name"
+					:scrollToBottom="false"
+				/>
+			</div>
+		</template>
+
 		<template #tab-body-editor>
 			<div
 				v-if="isMobile && editorSelected"
@@ -279,6 +292,8 @@ import { useTelemetry } from '@framework/ui/telemetry/index'
 import { useOnboarding } from '@framework/ui/components/Onboarding/index'
 import { seesOnboarding } from '@/utils/onboarding'
 import TabbedDetailPage from '@/components/Layouts/pages/TabbedDetailPage.vue'
+import Discussions from '@/components/Discussions.vue'
+import { canReadDiscussions } from '@/utils/doctypePermissions'
 import type { DetailTab } from '@/components/Layouts/pages/TabbedDetailPage.vue'
 import CourseOverview from '@/pages/Courses/CourseOverview.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
@@ -474,7 +489,8 @@ const tabs = computed<DetailTab[]>(() => [
 		label: __('Overview'),
 		component: markRaw(CourseOverview),
 		icon: 'lucide-list',
-		when: isAdmin.value,
+		// An enrolled learner gets tabs too once the forum is theirs to open.
+		when: isAdmin.value || showForum.value,
 		flow: true,
 		rendersHeading: true,
 	},
@@ -492,6 +508,13 @@ const tabs = computed<DetailTab[]>(() => [
 		component: markRaw(CourseEditor),
 		icon: 'lucide-book-open',
 		when: isAdmin.value,
+	},
+	{
+		key: 'discussions',
+		label: __('Discussions'),
+		component: markRaw(Discussions),
+		icon: 'lucide-message-circle',
+		when: showForum.value,
 	},
 	{
 		key: 'settings',
@@ -529,6 +552,13 @@ const isInstructor = (): boolean =>
 const isAdmin = computed<boolean>(() => {
 	return Boolean(user.data?.is_moderator) || isInstructor()
 })
+
+// The course's own forum: its enrolled learners and its staff, as can_access_topic has it.
+const showForum = computed<boolean>(
+	() =>
+		(isAdmin.value || Boolean(course.data?.membership)) &&
+		canReadDiscussions(user)
+)
 
 const breadcrumbs = computed(() => {
 	const crumbs: {
