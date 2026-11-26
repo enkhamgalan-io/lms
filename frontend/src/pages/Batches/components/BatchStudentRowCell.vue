@@ -25,6 +25,12 @@
 		>
 		{{ attendanceLabel }}
 	</span>
+	<span
+		v-else-if="columnKey === 'views' || columnKey === 'courses_enrolled'"
+		class="text-sm tabular-nums text-ink-gray-7"
+	>
+		{{ student[columnKey] }}
+	</span>
 	<span v-else-if="columnKey === 'last_active'" class="text-sm text-ink-gray-6">
 		{{ lastActiveLabel }}
 	</span>

@@ -14,11 +14,14 @@
 		:filter-label="filterLabel"
 		:filter-choices="filterChoices"
 		:filter-value="stage"
+		:sort-choices="SORT_CHOICES"
+		:sort-value="sortBy"
 		:empty-description="__('Try a different name, email or filter')"
 		@page="showPage"
 		@retry="reload"
 		@clear-filter="clearFilter"
 		@choose-filter="(value) => (stage = value as BatchFilter)"
+		@choose-sort="(value) => (sortBy = value as StudentSort | null)"
 	>
 		<template #cell="{ columnKey, row, compact }">
 			<BatchStudentRowCell
@@ -48,12 +51,13 @@
 <script setup lang="ts">
 import { Button, Dialog, toast } from 'frappe-ui'
 import type { DropdownOption } from 'frappe-ui'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import DashboardStudentList from '@/components/Dashboard/DashboardStudentList.vue'
 import BatchStudentRowCell from '@/pages/Batches/components/BatchStudentRowCell.vue'
 import {
 	BATCH_FILTER_GROUPS,
 	BATCH_FILTER_LABELS,
+	studentSortChoices,
 } from '@/utils/dashboard/filters'
 import { openExternal } from '@/utils/openExternal'
 import { useDashboardStudents } from '@/composables/dashboard/useDashboardStudents'
@@ -66,6 +70,7 @@ import type {
 	ListColumn,
 	ListRow as ListRowData,
 	ListViewOptions,
+	StudentSort,
 } from '@/types'
 
 const props = defineProps<{
@@ -78,6 +83,8 @@ const emit = defineEmits<{
 }>()
 
 const stage = defineModel<BatchFilter | null>('stage', { default: null })
+const sortBy = ref<StudentSort | null>(null)
+const SORT_CHOICES = studentSortChoices()
 const classFilter = defineModel<ClassAttendanceFilter | null>('classFilter', {
 	default: null,
 })
@@ -112,8 +119,9 @@ const {
 		...paging,
 		live_class: classFilter.value?.liveClass ?? null,
 		attendance: classFilter.value?.attendance ?? null,
+		sort_by: sortBy.value,
 	}),
-	filters: [classFilter],
+	filters: [classFilter, sortBy],
 	onRemoved: (done) => {
 		reportRemoved(done)
 		emit('removed')
@@ -141,6 +149,18 @@ const columns = computed<ListColumn[]>(() => [
 	{ label: __('Student'), key: 'member_name', width: 'minmax(0, 2fr)' },
 	{ label: __('Progress'), key: 'progress', width: 'minmax(0, 0.8fr)' },
 	{ label: __('Attendance'), key: 'attendance', width: 'minmax(0, 0.8fr)' },
+	{
+		label: __('Views'),
+		key: 'views',
+		width: 'minmax(0, 0.6fr)',
+		hideOnMobile: true,
+	},
+	{
+		label: __('Courses'),
+		key: 'courses_enrolled',
+		width: 'minmax(0, 0.6fr)',
+		hideOnMobile: true,
+	},
 	{
 		label: __('Last active'),
 		key: 'last_active',

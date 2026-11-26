@@ -46,11 +46,13 @@ from lms.lms.dashboard.common import (
 	_review_backlog_counts,
 	_send_reminder,
 	_sheet_datetime,
+	_sorted_students,
 	_trend_weeks,
 	_validate_file_format,
 	_validate_search,
 	_validate_stage,
 	_validate_time_frame,
+	_view_and_enrollment_counts,
 	_weekly_counts,
 	_weekly_values,
 	_windowed_counts,
@@ -172,8 +174,6 @@ def get_course_students(
 	"""One page of the course's enrolled students, newest enrollment first unless `sort_by`
 	names another order: most progress, most lesson views or most courses enrolled in."""
 	_check_dashboard_access(course)
-	if sort_by not in (None, "", *STUDENT_SORTS):
-		frappe.throw(_("Sort students by one of: {0}").format(", ".join(STUDENT_SORTS)))
 	stage = _validate_stage(stage)
 	search = _validate_search(search)
 	start, page_length = _clamp_page(start, page_length)
@@ -181,10 +181,12 @@ def get_course_students(
 	lessons = _course_lesson_names(course)
 	query, fields, Enrollment = _course_students_query(course, lessons, stage, search)
 	total = query.select(fn.Count(Enrollment.name)).run()[0][0]
-	ordered = query.select(*fields)
-	if sort_by:
-		ordered = ordered.orderby(STUDENT_SORTS[sort_by], order=Order.desc)
-	rows = _newest_first(ordered, Enrollment).limit(page_length).offset(start).run(as_dict=True)
+	rows = (
+		_sorted_students(query.select(*fields), Enrollment, sort_by, STUDENT_SORTS)
+		.limit(page_length)
+		.offset(start)
+		.run(as_dict=True)
+	)
 	return {
 		"total": cint(total),
 		"rows": [_student_row(row, len(lessons)) for row in rows],
@@ -488,28 +490,13 @@ def _course_students_query(course: str, lessons: list[str], stage: str | None, s
 	Enrollment = facts.enrollment
 	User = frappe.qb.DocType("User")
 	Payment = frappe.qb.DocType("LMS Payment")
-	View = frappe.qb.DocType("LMS Lesson View")
-	views = (
-		frappe.qb.from_(View)
-		.select(View.member, fn.Sum(View.count).as_("views"))
-		.where(View.course == course)
-		.groupby(View.member)
-	).as_("views_per_member")
-	Other = frappe.qb.DocType("LMS Enrollment").as_("other")
-	enrolled = (
-		frappe.qb.from_(Other).select(Other.member, fn.Count(Other.name).as_("courses")).groupby(Other.member)
-	).as_("courses_per_member")
-
 	query = (
 		query.left_join(User)
 		.on(User.name == Enrollment.member)
 		.left_join(Payment)
 		.on(Payment.name == Enrollment.payment)
-		.left_join(views)
-		.on(views.member == Enrollment.member)
-		.left_join(enrolled)
-		.on(enrolled.member == Enrollment.member)
 	)
+	query, counts = _view_and_enrollment_counts(query, Enrollment, [course])
 	if stage:
 		query = query.where(_stage_condition(stage, facts, now_datetime()))
 	if search:
@@ -536,8 +523,7 @@ def _course_students_query(course: str, lessons: list[str], stage: str | None, s
 		Payment.currency,
 		Enrollment.creation.as_("enrolled_on"),
 		Enrollment.valid_until,
-		fn.Coalesce(views.views, 0).as_("views"),
-		fn.Coalesce(enrolled.courses, 0).as_("courses_enrolled"),
+		*counts,
 	)
 	return query, fields, Enrollment
 

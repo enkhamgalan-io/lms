@@ -3,6 +3,7 @@ import type {
 	BatchFilter,
 	PaymentStatus,
 	StudentFilter,
+	StudentSort,
 	StudentStage,
 	StudentTrack,
 } from '@/types'
@@ -85,3 +86,15 @@ export const PAYMENT_THEMES: Record<PaymentStatus, BadgeProps['theme']> = {
 	Pending: 'amber',
 	Free: 'gray',
 }
+
+// The dashboards' student sorts: get_course_students' and get_batch_students'
+// sort_by. Null, the default, keeps newest enrollment first. A function, so the
+// labels translate in the session's language.
+export const studentSortChoices = (): {
+	value: StudentSort
+	label: string
+}[] => [
+	{ value: 'progress', label: __('Most progress') },
+	{ value: 'views', label: __('Most lesson views') },
+	{ value: 'enrollments', label: __('Most courses enrolled') },
+]

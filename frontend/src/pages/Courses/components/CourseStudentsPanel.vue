@@ -58,7 +58,11 @@ import { openExternal } from '@/utils/openExternal'
 import { useScreenSize } from '@/utils/composables'
 import { useDashboardStudents } from '@/composables/dashboard/useDashboardStudents'
 import { useStudentReminder } from '@/composables/dashboard/useDashboard'
-import { FILTER_GROUPS, FILTER_LABELS } from '@/utils/dashboard/filters'
+import {
+	FILTER_GROUPS,
+	FILTER_LABELS,
+	studentSortChoices,
+} from '@/utils/dashboard/filters'
 import type {
 	CourseStudentRow,
 	CourseStudentsParams,
@@ -86,13 +90,8 @@ const WIDE_SCREEN = 1536
 
 const { size } = useScreenSize()
 const stage = defineModel<StudentFilter | null>('stage', { default: null })
-// get_course_students' STUDENT_SORTS; null keeps newest enrollment first.
 const sortBy = ref<StudentSort | null>(null)
-const SORT_CHOICES: { value: StudentSort; label: string }[] = [
-	{ value: 'progress', label: __('Most progress') },
-	{ value: 'views', label: __('Most lesson views') },
-	{ value: 'enrollments', label: __('Most courses enrolled') },
-]
+const SORT_CHOICES = studentSortChoices()
 
 const {
 	search,

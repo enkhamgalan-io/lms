@@ -1,5 +1,6 @@
 import type { BatchFilter } from '@/types/dashboard/batch'
 import type { PaymentStatus } from '@/types/dashboard/common'
+import type { StudentSort } from '@/types/dashboard/course'
 
 export type EvaluationStatus =
 	| 'not_requested'
@@ -41,6 +42,10 @@ export type BatchStudentRow = {
 	currency: string | null
 	last_active: string | null
 	enrolled_on: string
+	/** Lesson views of the batch's courses. */
+	views: number
+	/** Courses the student is enrolled in, anywhere. */
+	courses_enrolled: number
 }
 
 export interface BatchStudentsPage {
@@ -56,6 +61,7 @@ export interface BatchStudentsParams {
 	page_length: number
 	live_class: string | null
 	attendance: 'attended' | 'missed' | null
+	sort_by: StudentSort | null
 }
 
 export interface BatchClassAttendee {
