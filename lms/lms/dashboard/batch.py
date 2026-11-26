@@ -18,6 +18,7 @@ from frappe.utils import (
 	getdate,
 	now_datetime,
 )
+from pypika import Field
 from pypika import functions as fn
 
 from lms.lms.analytics_report import IMAGE_STUDENTS, report_html, report_preview, send_analytics
@@ -44,11 +45,13 @@ from lms.lms.dashboard.common import (
 	_review_backlog_counts,
 	_send_reminder,
 	_sheet_datetime,
+	_sorted_students,
 	_trend_weeks,
 	_validate_file_format,
 	_validate_search,
 	_validate_stage,
 	_validate_time_frame,
+	_view_and_enrollment_counts,
 	_weekly_counts,
 	_windowed_counts,
 	scored_quiz,
@@ -221,8 +224,10 @@ def get_batch_students(
 	page_length: int = 20,
 	live_class: str | None = None,
 	attendance: str | None = None,
+	sort_by: str | None = None,
 ) -> dict:
-	"""One page of the batch's students, newest enrollment first.
+	"""One page of the batch's students, newest enrollment first unless `sort_by` names
+	another order: most progress, most lesson views or most courses enrolled in.
 
 	`live_class` with `attendance` ("attended" or "missed") narrows the page to the
 	students who joined, or did not join, one of the batch's live classes."""
@@ -244,7 +249,12 @@ def get_batch_students(
 			Enrollment.member.isin(joined) if attendance == "attended" else Enrollment.member.notin(joined)
 		)
 	total = query.select(fn.Count(Enrollment.name)).run()[0][0]
-	rows = _newest_first(query.select(*fields), Enrollment).limit(page_length).offset(start).run(as_dict=True)
+	rows = (
+		_sorted_students(query.select(*fields), Enrollment, sort_by, BATCH_STUDENT_SORTS)
+		.limit(page_length)
+		.offset(start)
+		.run(as_dict=True)
+	)
 	progress = _course_progress_by_member(context, [row.member for row in rows])
 	certificate_courses = dict(
 		frappe.get_all(
@@ -1333,6 +1343,14 @@ def _member_passes(context: frappe._dict, roster):
 	)
 
 
+# Each order by its select alias, so ORDER BY reads the joined counts the rows carry.
+BATCH_STUDENT_SORTS = {
+	"progress": Field("progress_total"),
+	"views": Field("views"),
+	"enrollments": Field("courses_enrolled"),
+}
+
+
 def _batch_students_query(context: frappe._dict, stage: str | None, search: str | None):
 	"""The batch's students query with no select list, its row fields, and the enrollment table."""
 	query, facts = _batch_member_facts(context)
@@ -1345,6 +1363,7 @@ def _batch_students_query(context: frappe._dict, stage: str | None, search: str 
 		.left_join(Payment)
 		.on(Payment.name == Enrollment.payment)
 	)
+	query, counts = _view_and_enrollment_counts(query, Enrollment, context.course_names)
 	if stage:
 		query = query.where(_batch_filter_condition(stage, facts))
 	if search:
@@ -1379,6 +1398,7 @@ def _batch_students_query(context: frappe._dict, stage: str | None, search: str 
 		Payment.amount,
 		Payment.currency,
 		Enrollment.creation.as_("enrolled_on"),
+		*counts,
 	)
 	return query, fields, Enrollment
 
@@ -1452,6 +1472,8 @@ def _batch_student_row(row: frappe._dict, context: frappe._dict, progress: dict)
 		"currency": row.currency if has_payment else None,
 		"last_active": row.last_active,
 		"enrolled_on": row.enrolled_on,
+		"views": cint(row.views),
+		"courses_enrolled": cint(row.courses_enrolled),
 	}
 
 

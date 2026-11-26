@@ -303,6 +303,41 @@ def _report_date(value) -> str:
 	return format_date(getdate(value)) if value else ""
 
 
+def _view_and_enrollment_counts(query, Enrollment, courses: list[str]):
+	"""Join each member's lesson views of `courses` and how many courses they are enrolled in,
+	for the dashboards' students sorts. Returns the query and the two select fields."""
+	View = frappe.qb.DocType("LMS Lesson View")
+	views = (
+		frappe.qb.from_(View)
+		.select(View.member, fn.Sum(View["count"]).as_("views"))
+		.where(View.course.isin(courses or [""]))
+		.groupby(View.member)
+	).as_("views_per_member")
+	Other = frappe.qb.DocType("LMS Enrollment").as_("other")
+	enrolled = (
+		frappe.qb.from_(Other).select(Other.member, fn.Count(Other.name).as_("courses")).groupby(Other.member)
+	).as_("courses_per_member")
+	query = (
+		query.left_join(views)
+		.on(views.member == Enrollment.member)
+		.left_join(enrolled)
+		.on(enrolled.member == Enrollment.member)
+	)
+	return query, (
+		fn.Coalesce(views.views, 0).as_("views"),
+		fn.Coalesce(enrolled.courses, 0).as_("courses_enrolled"),
+	)
+
+
+def _sorted_students(query, Enrollment, sort_by: str | None, sorts: dict):
+	"""Newest enrollment first, after `sort_by`'s order when one is given."""
+	if sort_by not in (None, "", *sorts):
+		frappe.throw(_("Sort students by one of: {0}").format(", ".join(sorts)))
+	if sort_by:
+		query = query.orderby(sorts[sort_by], order=Order.desc)
+	return _newest_first(query, Enrollment)
+
+
 def _newest_first(query, Enrollment):
 	return query.orderby(Enrollment.creation, order=Order.desc).orderby(Enrollment.name, order=Order.desc)
 
