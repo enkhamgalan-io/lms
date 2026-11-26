@@ -633,7 +633,11 @@
 							>
 								{{ passed ? __('Passed') : __('Failed') }}
 							</Badge>
-							<p class="text-base tabular-nums text-ink-gray-8">
+							<p
+								v-if="quizSubmission.data.percentage !== undefined"
+								data-testid="quiz-score"
+								class="text-base tabular-nums text-ink-gray-8"
+							>
 								{{
 									__('{0} of {1} marks').format(
 										quizSubmission.data.score,
@@ -1082,7 +1086,21 @@ watch(showLeaveConfirmation, (open) => {
 	if (!open && settleLeave) answerLeave(false)
 })
 
+// Staff ended this attempt (remove_from_quiz), which already saved it as a
+// submission, so the screen closes without submitting anything of its own.
+const socket = inject<any>('$socket', null)
+const onRemoved = (data: { quiz?: string }) => {
+	if (data?.quiz !== props.quizName || !activeQuestion.value) return
+	localStorage.removeItem(answerStorageKey.value)
+	stopTimer()
+	resetQuiz()
+	attempts.reload()
+	toast.error(__('An instructor removed you from this quiz attempt.'))
+}
+socket?.on('quiz_removed', onRemoved)
+
 onUnmounted(() => {
+	socket?.off('quiz_removed', onRemoved)
 	removeLeaveGuard()
 	window.removeEventListener('pagehide', handlePageHide)
 	window.removeEventListener('beforeunload', handleBeforeUnload)
@@ -2013,7 +2031,7 @@ const markForReview = (checked: boolean, questionNumber: number): void => {
 }
 
 const getSubmissionColumns = () => {
-	return [
+	const columns = [
 		{
 			label: __('No.'),
 			key: 'idx',
@@ -2043,6 +2061,10 @@ const getSubmissionColumns = () => {
 			width: 1,
 		},
 	]
+	// A quiz that hides its score shows the attempts without their marks.
+	if (quiz.data?.show_score !== 0) return columns
+	const marks = ['score', 'score_out_of', 'percentage']
+	return columns.filter((column) => !marks.includes(column.key))
 }
 
 const getSubmissionOptions = () => {

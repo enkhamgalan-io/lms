@@ -319,6 +319,16 @@
 						"
 					/>
 					<BooleanSwitch
+						v-model="doc.show_score"
+						size="sm"
+						:label="__('Show Score')"
+						:description="
+							__(
+								'Off shows learners only whether they passed, never their marks.'
+							)
+						"
+					/>
+					<BooleanSwitch
 						v-model="doc.show_submission_history"
 						size="sm"
 						:label="__('Show Submission History')"
@@ -333,11 +343,62 @@
 						"
 					/>
 					<FormControl
-						v-if="doc.shuffle_questions"
+						v-if="doc.shuffle_questions && !doc.random_rules?.length"
 						v-model="doc.limit_questions_to"
 						:label="__('Limit Questions To')"
 						variant="outline"
 					/>
+					<div v-if="doc.shuffle_questions" class="space-y-2">
+						<div class="flex items-center justify-between gap-2">
+							<span class="text-p-base-medium text-ink-gray-7">
+								{{ __('Random Rules') }}
+							</span>
+							<Button size="sm" @click="addRandomRule">
+								{{ __('Add rule') }}
+							</Button>
+						</div>
+						<p class="text-p-sm text-ink-gray-6">
+							{{
+								__(
+									"Draw each attempt bank by bank from this quiz's questions. The counts replace Limit Questions To."
+								)
+							}}
+						</p>
+						<div
+							v-for="(rule, index) in doc.random_rules"
+							:key="rule.name ?? index"
+							class="grid grid-cols-[minmax(0,1fr)_8rem_5rem_auto] items-center gap-2"
+						>
+							<FormControl
+								v-model="rule.question_bank"
+								variant="outline"
+								:placeholder="__('Question bank')"
+								:aria-label="__('Question bank')"
+							/>
+							<FormControl
+								v-model="rule.difficulty"
+								type="select"
+								variant="outline"
+								:options="difficultyOptions(__('Any'))"
+								:aria-label="__('Difficulty')"
+							/>
+							<FormControl
+								v-model="rule.count"
+								type="number"
+								variant="outline"
+								:aria-label="__('Questions')"
+							/>
+							<Button
+								variant="ghost"
+								:aria-label="__('Remove rule')"
+								@click="doc.random_rules.splice(index, 1)"
+							>
+								<template #icon>
+									<span class="lucide-x size-4" aria-hidden="true" />
+								</template>
+							</Button>
+						</div>
+					</div>
 					<BooleanSwitch
 						v-model="doc.shuffle_options"
 						size="sm"
@@ -451,6 +512,7 @@ import Quiz from '@/components/Quiz.vue'
 import {
 	allowedUiTypesFor,
 	allowedQuestionTypesFor,
+	difficultyOptions,
 	nextQuestionUiType,
 	toBackendType,
 	toUiType,
@@ -1093,9 +1155,28 @@ watch([() => quizDetails.value.doc, canSave], () => armAutosave(), {
 // Mirrors LMS Quiz.calculate_total_marks. The limit only counts while shuffle
 // is on (validate_limit zeroes it otherwise), and the server sums the first N
 // rather than multiplying the first row's marks.
+const addRandomRule = () => {
+	const doc = quizDetails.value.doc
+	if (!doc) return
+	doc.random_rules = [
+		...(doc.random_rules ?? []),
+		{ question_bank: '', difficulty: '', count: 1 },
+	]
+}
+
 const calculateTotalMarks = () => {
 	const rows = savedQuestions()
-	const limit = quizDetails.value.doc?.shuffle_questions
+	const rules = quizDetails.value.doc?.random_rules ?? []
+	// Mirrors LMS Quiz.apply_random_rules: the rules' total is the limit.
+	const ruleTotal = rules.reduce(
+		(sum, rule) => sum + (Number(rule.count) || 0),
+		0
+	)
+	const limit = rules.length
+		? ruleTotal < rows.length
+			? ruleTotal
+			: 0
+		: quizDetails.value.doc?.shuffle_questions
 		? Number(quizDetails.value.doc?.limit_questions_to) || 0
 		: 0
 	const counted = limit ? rows.slice(0, limit) : rows

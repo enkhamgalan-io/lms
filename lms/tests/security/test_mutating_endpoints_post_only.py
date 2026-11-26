@@ -50,6 +50,7 @@ READ_ONLY_ENDPOINTS = (
 	"lms.lms.api.get_meta_info",
 	"lms.lms.api.get_my_batches",
 	"lms.lms.api.get_my_courses",
+	"lms.lms.api.get_my_lesson_results",
 	"lms.lms.api.get_my_live_classes",
 	"lms.lms.api.get_new_gateway_fields",
 	"lms.lms.api.get_notifications",

@@ -15,6 +15,20 @@
 		:empty-description="emptyState?.description"
 		@load-more="submissions.next()"
 	>
+		<template #actions>
+			<Button
+				v-if="filters.quiz && filters.member"
+				theme="red"
+				:label="__('Remove from attempt')"
+				:loading="removal.loading"
+				@click="confirmRemoval"
+			>
+				<template #prefix>
+					<span class="lucide-user-x size-4" aria-hidden="true" />
+				</template>
+			</Button>
+		</template>
+
 		<template #filters>
 			<Link
 				doctype="LMS Quiz"
@@ -70,11 +84,19 @@
 </template>
 
 <script setup lang="ts">
-import { Button, createListResource, usePageMeta } from 'frappe-ui'
+import {
+	Button,
+	createListResource,
+	createResource,
+	toast,
+	usePageMeta,
+} from 'frappe-ui'
 import { computed, inject, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { sessionStore } from '@/stores/session'
 import Link from '@/components/Controls/Link.vue'
+import { createDialog } from '@/utils/dialogs'
+import { resourceErrorMessage } from '@/utils/resource'
 import ListPage from '@/components/Layouts/pages/ListPage.vue'
 import { useBulkDeleteAction } from '@/utils/bulkDelete'
 import type { LMSQuizSubmission } from '@/types/lms/LMSQuizSubmission'
@@ -250,4 +272,37 @@ usePageMeta(() => ({
 	title: __('Quiz Submissions'),
 	icon: brand.favicon,
 }))
+
+// Ends the learner's open attempt at the filtered quiz: saved with no marks as
+// removed by staff, and their screen closes (remove_from_quiz).
+const removal = createResource({
+	url: 'lms.lms.doctype.lms_quiz.lms_quiz.remove_from_quiz',
+})
+const confirmRemoval = (): void => {
+	const { quiz, member } = filters.value
+	createDialog({
+		title: __('Remove {0} from this quiz?').format(member),
+		message: __(
+			'Their current attempt ends now and is saved with no marks. It counts as one of their attempts.'
+		),
+		actions: [
+			{
+				label: __('Remove'),
+				theme: 'red',
+				variant: 'solid',
+				onClick: ({ close }: { close: () => void }) =>
+					removal
+						.submit({ quiz, member })
+						.then(() => {
+							toast.success(__('Removed from the quiz'))
+							submissions.reload()
+							close()
+						})
+						.catch((error: unknown) =>
+							toast.error(resourceErrorMessage(error, __('Could not remove')))
+						),
+			},
+		],
+	})
+}
 </script>
