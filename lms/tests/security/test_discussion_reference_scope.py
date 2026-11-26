@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Frappe and Contributors
 # See license.txt
-"""Only lessons and batches carry discussions. A topic or reply filed under any
-other record is closed to everyone, staff included."""
+"""Lessons, batches and a course's own forum carry discussions. A topic or reply filed
+under any other record is closed to everyone, staff included."""
 
 import frappe
 
@@ -21,23 +21,24 @@ class TestDiscussionReferenceScope(BaseTestUtils):
 		chapter = cls._create_chapter(f"Chapter {hash}", cls.course).name
 		cls.lesson = cls._create_lesson(f"Lesson {hash}", chapter, cls.course).name
 		cls._create_enrollment(cls.student, cls.course)
-		cls.course_topic = cls._topic("LMS Course", cls.course)
+		cls.other_topic = cls._topic("User", cls.student)
 		cls.lesson_topic = cls._topic("Course Lesson", cls.lesson)
 
 	@classmethod
 	def _topic(cls, doctype, docname):
-		return (
-			frappe.get_doc(
-				{
-					"doctype": "Discussion Topic",
-					"title": docname,
-					"reference_doctype": doctype,
-					"reference_docname": docname,
-				}
-			)
-			.insert()
-			.name
+		# Written straight to the table: validate_discussion_topic refuses a topic under a
+		# record that carries no discussions, which is the case these tests stand on.
+		topic = frappe.get_doc(
+			{
+				"doctype": "Discussion Topic",
+				"title": docname,
+				"reference_doctype": doctype,
+				"reference_docname": docname,
+			}
 		)
+		topic.set_new_name()
+		topic.db_insert()
+		return topic.name
 
 	def _reply(self, topic):
 		return frappe.get_doc({"doctype": "Discussion Reply", "topic": topic, "reply": "A reply"}).insert()
@@ -46,16 +47,16 @@ class TestDiscussionReferenceScope(BaseTestUtils):
 		for user in (self.moderator, self.student):
 			with self.subTest(user=user):
 				frappe.set_user(user)
-				self.assertFalse(can_access_topic("LMS Course", self.course))
+				self.assertFalse(can_access_topic("User", self.student))
 				with self.assertRaises(frappe.ValidationError):
-					get_discussion_topics("LMS Course", self.course)
+					get_discussion_topics("User", self.student)
 
 	def test_a_reply_under_any_other_record_is_refused(self):
 		for user in (self.moderator, self.student):
 			with self.subTest(user=user):
 				frappe.set_user(user)
 				with self.assertRaises(frappe.PermissionError):
-					self._reply(self.course_topic)
+					self._reply(self.other_topic)
 
 	def test_a_reply_under_a_lesson_still_posts(self):
 		frappe.set_user(self.student)

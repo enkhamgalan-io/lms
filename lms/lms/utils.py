@@ -749,11 +749,29 @@ def handle_notifications(doc: Document, method: str):
 		["reference_doctype", "reference_docname", "owner", "title"],
 		as_dict=1,
 	)
-	if topic.reference_doctype not in ["Course Lesson", "LMS Batch"]:
+	if topic.reference_doctype not in DISCUSSION_PLACES:
 		return
 	create_notification_log(doc, topic)
 	notify_mentions_on_portal(doc, topic)
 	notify_mentions_via_email(doc, topic)
+
+
+# What a Discussion Topic may hang off: a lesson, a batch, or a course's own forum.
+DISCUSSION_PLACES = ("Course Lesson", "LMS Batch", "LMS Course")
+
+
+def course_forum_link(course: str) -> str:
+	return get_lms_route(f"courses/{course}#discussions")
+
+
+def get_course_forum_details_for_notification(topic: dict):
+	course = topic.reference_docname
+	course_title = frappe.db.get_value("LMS Course", course, "title")
+	instructors = frappe.db.get_all(
+		"Course Instructor", {"parent": course, "parenttype": "LMS Course"}, pluck="instructor"
+	)
+	subject = _("New reply on the topic {0} in course {1}").format(escape_html(topic.title), course_title)
+	return subject, course_forum_link(course), [topic.owner, *instructors]
 
 
 def get_course_details_for_notification(topic: dict):
@@ -793,6 +811,8 @@ def get_batch_details_for_notification(topic: dict):
 def create_notification_log(doc: Document, topic: dict):
 	if topic.reference_doctype == "Course Lesson":
 		subject, link, users = get_course_details_for_notification(topic)
+	elif topic.reference_doctype == "LMS Course":
+		subject, link, users = get_course_forum_details_for_notification(topic)
 	else:
 		subject, link, users = get_batch_details_for_notification(topic)
 
@@ -838,6 +858,11 @@ def notify_mentions_on_portal(doc: Document, topic: dict):
 			frappe.bold(from_user_name), frappe.bold(escape_html(topic.title))
 		)
 		link = get_lesson_url(course, get_lesson_index(topic.reference_docname))
+	elif topic.reference_doctype == "LMS Course":
+		subject = _("{0} mentioned you in a comment in {1}").format(
+			frappe.bold(from_user_name), frappe.bold(escape_html(topic.title))
+		)
+		link = course_forum_link(topic.reference_docname)
 	else:
 		batch_title = frappe.db.get_value("LMS Batch", topic.reference_docname, "title")
 		subject = _("{0} mentioned you in a comment in {1}").format(
@@ -890,6 +915,8 @@ def notify_mentions_via_email(doc: Document, topic: dict):
 		course = frappe.db.get_value("Course Lesson", topic.reference_docname, "course")
 		lesson_index = get_lesson_index(topic.reference_docname)
 		link = get_lesson_url(course, lesson_index)
+	if topic.reference_doctype == "LMS Course":
+		link = course_forum_link(topic.reference_docname)
 
 	args = {
 		"sender": sender_fullname,
@@ -923,6 +950,12 @@ def is_topic_participant(user: str, topic: dict) -> bool:
 
 	if topic.reference_doctype == "Course Lesson":
 		course = frappe.db.get_value("Course Lesson", topic.reference_docname, "course")
+		return bool(
+			frappe.db.exists("LMS Enrollment", {"course": course, "member": user})
+			or can_author_course(course, user=user)
+		)
+	if topic.reference_doctype == "LMS Course":
+		course = topic.reference_docname
 		return bool(
 			frappe.db.exists("LMS Enrollment", {"course": course, "member": user})
 			or can_author_course(course, user=user)
@@ -3007,8 +3040,11 @@ def can_access_topic(doctype: str, docname: str) -> bool:
 		is_admin = evaluator_role_reads_batch(docname) or can_author_batch(docname)
 		if not is_student and not is_admin:
 			return False
+	elif doctype == "LMS Course":
+		if not has_active_enrollment(docname) and not can_modify_course(docname):
+			return False
 	else:
-		# Only lessons and batches carry discussions.
+		# Only lessons, batches and a course's own forum carry discussions.
 		return False
 	return True
 
@@ -4129,6 +4165,13 @@ def persona_captured():
 	frappe.db.set_single_value("LMS Settings", "persona_captured", 1)
 
 
+def validate_discussion_topic(doc: Document, method: str):
+	"""A topic is opened only where its author may read the discussion. frappe.client.insert
+	creates topics directly, and a topic's title shows to everyone in that place."""
+	if not can_access_topic(doc.reference_doctype, doc.reference_docname):
+		frappe.throw(_("You cannot start a discussion here."), frappe.PermissionError)
+
+
 def validate_discussion_reply(doc: Document, method: str):
 	# Released frappe skips JSON-shaped HTML, and replies are mailed out as written.
 	doc.reply = sanitize_rich_text(doc.reply)
@@ -4142,8 +4185,15 @@ def validate_discussion_reply(doc: Document, method: str):
 	elif topic.reference_doctype == "LMS Batch":
 		validate_batch_access(topic.reference_docname)
 
+	elif topic.reference_doctype == "LMS Course":
+		# The forum's readers, as can_access_topic has them, are the ones who may post.
+		if not can_access_topic("LMS Course", topic.reference_docname):
+			frappe.throw(_("You do not have access to this course."), frappe.PermissionError)
+
 	else:
-		frappe.throw(_("Replies can only be posted under a lesson or a batch."), frappe.PermissionError)
+		frappe.throw(
+			_("Replies can only be posted under a lesson, a batch or a course."), frappe.PermissionError
+		)
 
 
 def validate_course_access(lesson: str):

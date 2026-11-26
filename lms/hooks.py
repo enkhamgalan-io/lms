@@ -180,6 +180,7 @@ doc_events = {
 			"lms.lms.doctype.lms_badge.lms_badge.process_badges",
 		]
 	},
+	"Discussion Topic": {"validate": "lms.lms.utils.validate_discussion_topic"},
 	"Discussion Reply": {
 		"after_insert": "lms.lms.utils.handle_notifications",
 		"validate": "lms.lms.utils.validate_discussion_reply",
