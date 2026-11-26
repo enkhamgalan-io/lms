@@ -53,6 +53,27 @@
 							class="w-full"
 						/>
 					</div>
+					<div class="flex items-center gap-3">
+						<FormControl
+							v-model="member.department"
+							:label="__('Department')"
+							type="text"
+							class="w-full"
+						/>
+						<FormControl
+							v-model="member.employee_code"
+							:label="__('Employee Code')"
+							type="text"
+							class="w-full"
+						/>
+					</div>
+					<FormControl
+						v-model="member.register_number"
+						:label="__('Register Number')"
+						type="text"
+						:placeholder="__('УБ90010112')"
+						autocomplete="off"
+					/>
 				</template>
 				<div class="flex flex-col gap-2">
 					<div class="text-p-sm-medium text-ink-gray-7">
@@ -151,6 +172,9 @@ const member = reactive({
 	organization: '',
 	designation: '',
 	rank: '',
+	department: '',
+	employee_code: '',
+	register_number: '',
 })
 
 const roles = reactive(noRoles())
@@ -243,6 +267,9 @@ const addMember = async () => {
 				organization: member.organization || null,
 				designation: member.designation.trim() || null,
 				rank: member.rank.trim() || null,
+				department: member.department.trim() || null,
+				employee_code: member.employee_code.trim() || null,
+				register_number: member.register_number.trim() || null,
 			},
 		})
 

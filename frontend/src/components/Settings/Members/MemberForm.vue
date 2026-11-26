@@ -92,6 +92,25 @@
 					type="text"
 					autocomplete="off"
 				/>
+				<FormControl
+					v-model="member.department"
+					:label="__('Department')"
+					type="text"
+					autocomplete="off"
+				/>
+				<FormControl
+					v-model="member.employee_code"
+					:label="__('Employee Code')"
+					type="text"
+					autocomplete="off"
+				/>
+				<FormControl
+					v-model="member.register_number"
+					:label="__('Register Number')"
+					type="text"
+					:placeholder="__('УБ90010112')"
+					autocomplete="off"
+				/>
 			</div>
 
 			<FormControl
@@ -266,6 +285,9 @@ const PROFILE_FIELDS = [
 	'organization',
 	'designation',
 	'rank',
+	'department',
+	'employee_code',
+	'register_number',
 ] as const
 
 const profileOf = (doc: SettingsListRow) =>

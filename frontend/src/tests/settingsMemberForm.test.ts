@@ -133,6 +133,9 @@ describe('Settings member form', () => {
 				organization: null,
 				designation: null,
 				rank: null,
+				department: null,
+				employee_code: null,
+				register_number: null,
 			},
 		})
 		expect(record.save).not.toHaveBeenCalled()

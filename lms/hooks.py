@@ -215,7 +215,10 @@ doc_events = {
 	"LMS Program Course": {"validate": CHILD_ROW_MOVE_GATE},
 	"LMS Program Member": {"validate": CHILD_ROW_MOVE_GATE},
 	"User": {
-		"validate": "lms.lms.user.validate_username_duplicates",
+		"validate": [
+			"lms.lms.user.validate_username_duplicates",
+			"lms.lms.user.validate_register_number",
+		],
 		"before_insert": "lms.lms.user.add_lms_student_role",
 	},
 	# Product events for Pulse: one per step a site takes (see lms.lms.telemetry).
