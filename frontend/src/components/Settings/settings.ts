@@ -286,6 +286,16 @@ export const settingsTree: SettingsGroup[] = [
 									),
 								},
 								{
+									label: __('Course Enrollment Template'),
+									name: 'course_enrollment_template',
+									type: 'link',
+									doctype: 'Email Template',
+									filters: { include_disabled: 1 },
+									description: __(
+										'Replaces the wording of the email sent when someone enrolls a learner in a course.'
+									),
+								},
+								{
 									label: __('Certificate Email Template'),
 									name: 'certification_template',
 									type: 'link',

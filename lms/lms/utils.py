@@ -370,6 +370,18 @@ def get_lesson_icon(body: str, content: str):
 	return "icon-list"
 
 
+def render_email_template(template_name: str, args: dict) -> dict:
+	"""frappe's get_email_template without its read check on Email Template. A Moderator
+	who enrolls someone holds no read on it, so that check made the email fail; the
+	template is the one the site chose in LMS Settings or on the batch."""
+	template = frappe.get_cached_doc("Email Template", template_name)
+	body = template.response_html if template.use_html else template.response
+	return {
+		"subject": frappe.render_template(template.subject, args),
+		"message": frappe.render_template(body, args),
+	}
+
+
 LESSON_PRIVATE_MEDIA_ENDPOINT = (
 	"/api/method/lms.lms.doctype.course_lesson.course_lesson.serve_resource?file_url="
 )

@@ -36,6 +36,7 @@ export interface LMSSettings {
 	apply_rounding?: 0 | 1
 	/**	Batch Confirmation Template : Link - Email Template	*/
 	batch_confirmation_template?: string
+	course_enrollment_template?: string
 	/**	Courses : Check	*/
 	show_courses?: 0 | 1
 	/**	Students : Check	*/
