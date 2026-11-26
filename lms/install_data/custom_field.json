@@ -278,6 +278,26 @@
 			"fieldtype": "Data",
 			"insert_after": "designation",
 			"label": "Rank"
+		},
+		{
+			"fieldname": "department",
+			"fieldtype": "Data",
+			"insert_after": "rank",
+			"label": "Department"
+		},
+		{
+			"fieldname": "employee_code",
+			"fieldtype": "Data",
+			"insert_after": "department",
+			"label": "Employee Code",
+			"search_index": 1
+		},
+		{
+			"fieldname": "register_number",
+			"fieldtype": "Data",
+			"insert_after": "employee_code",
+			"label": "Register Number",
+			"length": 10
 		}
 	],
 	"Communication": [

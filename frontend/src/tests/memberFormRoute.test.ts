@@ -350,7 +350,14 @@ describe('the member form route', () => {
 				email: MEMBER,
 				first_name: undefined,
 				last_name: undefined,
-				profile: { organization: null, designation: null, rank: null },
+				profile: {
+					organization: null,
+					designation: null,
+					rank: null,
+					department: null,
+					employee_code: null,
+					register_number: null,
+				},
 			})
 			expect(callMock).toHaveBeenCalledWith('lms.lms.api.save_role', {
 				user: MEMBER,
@@ -495,7 +502,14 @@ describe('the member form route', () => {
 				'lms.lms.api.add_member',
 				expect.objectContaining({
 					email: 'new@example.com',
-					profile: { organization: 'Agency', designation: 'Clerk', rank: null },
+					profile: {
+						organization: 'Agency',
+						designation: 'Clerk',
+						rank: null,
+						department: null,
+						employee_code: null,
+						register_number: null,
+					},
 				})
 			)
 		})

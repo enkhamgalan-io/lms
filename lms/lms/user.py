@@ -1,3 +1,4 @@
+import re
 import time
 
 import frappe
@@ -21,6 +22,20 @@ def validate_username_duplicates(doc, method):
 
 	if len(doc.username) < 4:
 		doc.username = doc.email.replace("@", "").replace(".", "")
+
+
+# A Mongolian register number: two Cyrillic letters, then the birth date and four more digits.
+REGISTER_NUMBER = re.compile(r"^[А-ЯЁӨҮ]{2}\d{8}$")
+
+
+def validate_register_number(doc, method):
+	if not doc.get("register_number"):
+		return
+	doc.register_number = doc.register_number.strip().upper()
+	if not REGISTER_NUMBER.match(doc.register_number):
+		frappe.throw(
+			_("Enter the register number as two Cyrillic letters and eight digits, like УБ90010112.")
+		)
 
 
 def add_lms_student_role(doc, method):

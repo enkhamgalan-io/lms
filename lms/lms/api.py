@@ -1731,6 +1731,9 @@ MEMBER_FIELDS = [
 	"organization",
 	"designation",
 	"rank",
+	"department",
+	"employee_code",
+	"register_number",
 ]
 
 MEMBER_STATUSES = ("Active", "Disabled")
@@ -2938,6 +2941,9 @@ MEMBER_PROFILE_FIELDS = (
 	"organization",
 	"designation",
 	"rank",
+	"department",
+	"employee_code",
+	"register_number",
 )
 
 
