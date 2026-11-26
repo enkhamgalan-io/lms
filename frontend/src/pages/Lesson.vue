@@ -268,6 +268,11 @@
 								:quizId="lesson.data.quiz_id"
 							/>
 						</div>
+						<LessonResults
+							v-if="user.data && lesson.data.name"
+							ref="lessonResults"
+							:lesson="lesson.data.name"
+						/>
 					</div>
 					<div
 						v-if="lesson.data && tabs.length"
@@ -396,6 +401,7 @@ import EditorJS from '@editorjs/editorjs'
 import LessonContent from '@/components/LessonContent.vue'
 import CourseInstructors from '@/components/CourseInstructors.vue'
 import ProgressBar from '@/components/ProgressBar.vue'
+import LessonResults from '@/components/LessonResults.vue'
 import Discussions from '@/components/Discussions.vue'
 import CertificationLinks from '@/components/CertificationLinks.vue'
 import CourseOutline from '@/components/CourseOutline.vue'
@@ -525,6 +531,8 @@ const canCreateNotes = computed(
 )
 const editor = ref<EditorJS | null>(null)
 const instructorEditor = ref<EditorJS | null>(null)
+// Reloaded whenever a quiz or an assignment marks this lesson.
+const lessonResults = ref<InstanceType<typeof LessonResults> | null>(null)
 const lessonProgress = ref(0)
 const lessonContainer = ref<HTMLElement | null>(null)
 const zenModeEnabled = ref(false)
@@ -578,6 +586,7 @@ const onLessonMarked = (marked: MarkedLesson): void => {
 	)
 		completedLesson.value = lesson.data?.name ?? null
 	outline.reload()
+	lessonResults.value?.reload()
 }
 
 const onLessonProgress = (data: LessonProgressEvent): void => {
@@ -589,6 +598,7 @@ const onLessonProgress = (data: LessonProgressEvent): void => {
 	// lesson. The server now addresses it to the completing member alone.
 	// Skip the ones the progress resource already reloaded for.
 	if (data.lesson !== completedLesson.value) outline.reload()
+	lessonResults.value?.reload()
 }
 
 const attachFullscreenEvent = () => {
