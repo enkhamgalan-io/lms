@@ -27,6 +27,7 @@
   "section_break_tzbu",
   "shuffle_questions",
   "limit_questions_to",
+  "random_rules",
   "shuffle_options",
   "single_session",
   "column_break_clsh",
@@ -158,6 +159,13 @@
    "fieldname": "limit_questions_to",
    "fieldtype": "Int",
    "label": "Limit Questions To"
+  },
+  {
+   "description": "Draw each attempt's questions bank by bank from this quiz's questions. Sets Shuffle Questions and Limit Questions To from the counts.",
+   "fieldname": "random_rules",
+   "fieldtype": "Table",
+   "label": "Random Rules",
+   "options": "LMS Quiz Random Rule"
   },
   {
    "default": "0",

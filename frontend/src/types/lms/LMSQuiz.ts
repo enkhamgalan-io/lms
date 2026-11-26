@@ -1,4 +1,5 @@
 import { LMSQuizQuestion } from './LMSQuizQuestion'
+import { LMSQuizRandomRule } from './LMSQuizRandomRule'
 
 export interface LMSQuiz {
 	creation: string
@@ -35,6 +36,8 @@ export interface LMSQuiz {
 	shuffle_questions?: 0 | 1
 	/**	Limit Questions To : Int	*/
 	limit_questions_to?: number
+	/**	Random Rules : Table - LMS Quiz Random Rule	*/
+	random_rules?: LMSQuizRandomRule[]
 	/**	Shuffle Options : Check	*/
 	shuffle_options?: 0 | 1
 	/**	Single Session : Check	*/
