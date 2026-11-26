@@ -56,6 +56,27 @@
 					<span class="lucide-x size-4" aria-hidden="true" />
 				</template>
 			</Button>
+			<Dropdown
+				v-if="sortChoices?.length"
+				:options="sortOptions"
+				align="end"
+				:class="{ 'ms-auto': !filterChoices?.length && !filterLabel }"
+			>
+				<Button
+					variant="subtle"
+					icon-left="lucide-arrow-down-wide-narrow"
+					:aria-label="__('Sort students')"
+				>
+					<span class="truncate">{{ sortLabel }}</span>
+				</Button>
+				<template #item-suffix="{ item }">
+					<span
+						class="size-4 text-ink-gray-7"
+						:class="{ 'lucide-check': item.selected }"
+						aria-hidden="true"
+					/>
+				</template>
+			</Dropdown>
 		</div>
 		<template v-if="showList">
 			<ResponsiveListView
@@ -239,12 +260,16 @@ const props = defineProps<{
 	// Filters the applied one can be swapped for in place, and the applied one.
 	filterChoices?: FilterChoice[]
 	filterValue?: string | null
+	// Orders the server can sort by; null in `sortValue` is the default order.
+	sortChoices?: FilterChoice[]
+	sortValue?: string | null
 }>()
 
 const emit = defineEmits<{
 	page: [offset: number]
 	clearFilter: []
 	chooseFilter: [value: string]
+	chooseSort: [value: string | null]
 	retry: []
 }>()
 
@@ -328,6 +353,22 @@ const choiceOptions = computed<DropdownOption[]>(() =>
 		selected: choice.value === props.filterValue,
 		onClick: () => emit('chooseFilter', choice.value),
 	}))
+)
+
+const sortOptions = computed<DropdownOption[]>(() =>
+	[
+		{ label: __('Newest enrollment'), value: null },
+		...(props.sortChoices ?? []),
+	].map((choice) => ({
+		label: choice.label,
+		selected: (choice.value ?? null) === (props.sortValue ?? null),
+		onClick: () => emit('chooseSort', choice.value ?? null),
+	}))
+)
+const sortLabel = computed<string>(
+	() =>
+		props.sortChoices?.find((choice) => choice.value === props.sortValue)
+			?.label ?? __('Newest enrollment')
 )
 
 const onSelections = (selections: ReadonlySet<unknown>): void => {

@@ -116,7 +116,13 @@ export type CourseStudentRow = {
 	enrolled_on: string
 	/** The last day the student can open the course; null for no end. */
 	valid_until: string | null
+	/** Lesson views of this course, from LMS Lesson View. */
+	views: number
+	/** Courses the student is enrolled in, this one included. */
+	courses_enrolled: number
 }
+
+export type StudentSort = 'progress' | 'views' | 'enrollments'
 
 export interface CourseStudentsPage {
 	total: number
@@ -129,6 +135,7 @@ export interface CourseStudentsParams {
 	search: string | null
 	start: number
 	page_length: number
+	sort_by: StudentSort | null
 }
 
 export interface LessonCompletionRow {
