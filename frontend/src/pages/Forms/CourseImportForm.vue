@@ -44,7 +44,12 @@
 								{{ uploadingFile.name }}
 							</div>
 							<div class="text-ink-gray-6">
-								{{ convertToMB(uploaded) }} of {{ convertToMB(total) }}
+								{{
+									__('{0} of {1}').format(
+										convertToMB(uploaded),
+										convertToMB(total)
+									)
+								}}
 							</div>
 						</div>
 						<div class="w-full bg-surface-gray-1 h-1 rounded-full mt-3">
@@ -147,7 +152,7 @@ const extractFile = (e: Event): File | null => {
 const validateFile = (file: File) => {
 	const extension = file.name.split('.').pop()?.toLowerCase()
 	if (extension !== 'zip') {
-		toast.error('Please upload a valid ZIP file.')
+		toast.error(__('Please upload a valid ZIP file.'))
 		console.error('Please upload a valid ZIP file.')
 	}
 	return extension
