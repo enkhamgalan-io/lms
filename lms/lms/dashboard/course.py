@@ -16,6 +16,7 @@ from frappe.utils import (
 	now_datetime,
 	nowdate,
 )
+from pypika import Field, Order
 from pypika import functions as fn
 from pypika.terms import ValueWrapper
 
@@ -166,9 +167,13 @@ def get_course_students(
 	search: str | None = None,
 	start: int = 0,
 	page_length: int = 20,
+	sort_by: str | None = None,
 ) -> dict:
-	"""One page of the course's enrolled students, newest enrollment first."""
+	"""One page of the course's enrolled students, newest enrollment first unless `sort_by`
+	names another order: most progress, most lesson views or most courses enrolled in."""
 	_check_dashboard_access(course)
+	if sort_by not in (None, "", *STUDENT_SORTS):
+		frappe.throw(_("Sort students by one of: {0}").format(", ".join(STUDENT_SORTS)))
 	stage = _validate_stage(stage)
 	search = _validate_search(search)
 	start, page_length = _clamp_page(start, page_length)
@@ -176,7 +181,10 @@ def get_course_students(
 	lessons = _course_lesson_names(course)
 	query, fields, Enrollment = _course_students_query(course, lessons, stage, search)
 	total = query.select(fn.Count(Enrollment.name)).run()[0][0]
-	rows = _newest_first(query.select(*fields), Enrollment).limit(page_length).offset(start).run(as_dict=True)
+	ordered = query.select(*fields)
+	if sort_by:
+		ordered = ordered.orderby(STUDENT_SORTS[sort_by], order=Order.desc)
+	rows = _newest_first(ordered, Enrollment).limit(page_length).offset(start).run(as_dict=True)
 	return {
 		"total": cint(total),
 		"rows": [_student_row(row, len(lessons)) for row in rows],
@@ -466,18 +474,41 @@ def _enrollment_facts(course: str, lessons: list[str]):
 	return query, facts
 
 
+# Each order by its select alias, so ORDER BY reads the joined counts the rows carry.
+STUDENT_SORTS = {
+	"progress": Field("lessons_completed"),
+	"views": Field("views"),
+	"enrollments": Field("courses_enrolled"),
+}
+
+
 def _course_students_query(course: str, lessons: list[str], stage: str | None, search: str | None):
 	"""The enrolled-students query with no select list, its row fields, and the enrollment table."""
 	query, facts = _enrollment_facts(course, lessons)
 	Enrollment = facts.enrollment
 	User = frappe.qb.DocType("User")
 	Payment = frappe.qb.DocType("LMS Payment")
+	View = frappe.qb.DocType("LMS Lesson View")
+	views = (
+		frappe.qb.from_(View)
+		.select(View.member, fn.Sum(View.count).as_("views"))
+		.where(View.course == course)
+		.groupby(View.member)
+	).as_("views_per_member")
+	Other = frappe.qb.DocType("LMS Enrollment").as_("other")
+	enrolled = (
+		frappe.qb.from_(Other).select(Other.member, fn.Count(Other.name).as_("courses")).groupby(Other.member)
+	).as_("courses_per_member")
 
 	query = (
 		query.left_join(User)
 		.on(User.name == Enrollment.member)
 		.left_join(Payment)
 		.on(Payment.name == Enrollment.payment)
+		.left_join(views)
+		.on(views.member == Enrollment.member)
+		.left_join(enrolled)
+		.on(enrolled.member == Enrollment.member)
 	)
 	if stage:
 		query = query.where(_stage_condition(stage, facts, now_datetime()))
@@ -505,6 +536,8 @@ def _course_students_query(course: str, lessons: list[str], stage: str | None, s
 		Payment.currency,
 		Enrollment.creation.as_("enrolled_on"),
 		Enrollment.valid_until,
+		fn.Coalesce(views.views, 0).as_("views"),
+		fn.Coalesce(enrolled.courses, 0).as_("courses_enrolled"),
 	)
 	return query, fields, Enrollment
 
@@ -859,6 +892,8 @@ def _student_row(row: frappe._dict, total_lessons: int) -> dict:
 		"currency": row.currency if has_payment else None,
 		"last_active": row.last_active,
 		"enrolled_on": row.enrolled_on,
+		"views": cint(row.views),
+		"courses_enrolled": cint(row.courses_enrolled),
 	}
 
 

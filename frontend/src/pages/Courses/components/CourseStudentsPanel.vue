@@ -14,11 +14,14 @@
 		:filter-label="filterLabel"
 		:filter-choices="filterChoices"
 		:filter-value="stage"
+		:sort-choices="SORT_CHOICES"
+		:sort-value="sortBy"
 		:empty-description="__('Try a different name, email or stage')"
 		@page="showPage"
 		@retry="reload"
 		@clear-filter="stage = null"
 		@choose-filter="(value) => (stage = value as StudentFilter)"
+		@choose-sort="(value) => (sortBy = value as StudentSort | null)"
 	>
 		<template #cell="{ columnKey, row, compact }">
 			<StudentRowCell
@@ -48,7 +51,7 @@
 <script setup lang="ts">
 import { Button, Dialog, toast } from 'frappe-ui'
 import type { DropdownOption } from 'frappe-ui'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import DashboardStudentList from '@/components/Dashboard/DashboardStudentList.vue'
 import StudentRowCell from '@/pages/Courses/components/StudentRowCell.vue'
 import { openExternal } from '@/utils/openExternal'
@@ -63,6 +66,7 @@ import type {
 	ListRow as ListRowData,
 	ListViewOptions,
 	StudentFilter,
+	StudentSort,
 } from '@/types'
 
 const props = defineProps<{
@@ -82,6 +86,13 @@ const WIDE_SCREEN = 1536
 
 const { size } = useScreenSize()
 const stage = defineModel<StudentFilter | null>('stage', { default: null })
+// get_course_students' STUDENT_SORTS; null keeps newest enrollment first.
+const sortBy = ref<StudentSort | null>(null)
+const SORT_CHOICES: { value: StudentSort; label: string }[] = [
+	{ value: 'progress', label: __('Most progress') },
+	{ value: 'views', label: __('Most lesson views') },
+	{ value: 'enrollments', label: __('Most courses enrolled') },
+]
 
 const {
 	search,
@@ -111,8 +122,10 @@ const {
 		params: (paging) => ({
 			course: props.courseName,
 			stage: stage.value,
+			sort_by: sortBy.value,
 			...paging,
 		}),
+		filters: [sortBy],
 		onRemoved: (done) => {
 			reportUnenrolled(done)
 			emit('unenrolled')
@@ -149,6 +162,18 @@ const paymentColumn = (): ListColumn[] =>
 const columns = computed<ListColumn[]>(() => [
 	{ label: __('Name'), key: 'member_name', width: 'minmax(0, 2fr)' },
 	{ label: __('Progress'), key: 'progress', width: 'minmax(0, 0.8fr)' },
+	{
+		label: __('Views'),
+		key: 'views',
+		width: 'minmax(0, 0.6fr)',
+		hideOnMobile: true,
+	},
+	{
+		label: __('Courses'),
+		key: 'courses_enrolled',
+		width: 'minmax(0, 0.6fr)',
+		hideOnMobile: true,
+	},
 	...paymentColumn(),
 	{
 		label: __('Last active'),

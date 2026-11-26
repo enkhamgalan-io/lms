@@ -31,6 +31,12 @@
 		{{ enrolledLabel }}
 	</span>
 	<span
+		v-else-if="columnKey === 'views' || columnKey === 'courses_enrolled'"
+		class="text-sm tabular-nums text-ink-gray-7"
+	>
+		{{ student[columnKey] }}
+	</span>
+	<span
 		v-else-if="columnKey === 'actions'"
 		class="flex justify-end"
 		@click.stop
