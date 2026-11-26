@@ -366,6 +366,10 @@ def submit_quiz(
 		frappe.cache.delete_value(_session_key(quiz, member))
 
 	if quiz_details.quiz_type in OPINION_TYPES:
+		# The quiz's name only: an open results page re-reads the tally through get_quiz_summary.
+		frappe.publish_realtime(
+			"quiz_summary_updated", {"quiz": quiz}, doctype="LMS Quiz", docname=quiz, after_commit=True
+		)
 		# Nothing to score: a survey thanks the learner, a poll shows the answers so far.
 		return {
 			"submission": submission.name,
@@ -440,6 +444,29 @@ def get_quiz_summary(quiz: str) -> list[dict]:
 	if not answered_poll and not can_administer_assessment("LMS Quiz", quiz):
 		frappe.throw(_("You cannot see the answers to this quiz."), frappe.PermissionError)
 	return quiz_summary(quiz)
+
+
+@frappe.whitelist()
+def download_quiz_summary(quiz: str):
+	"""The summed-up answers as an xlsx, one row per answer, for the quiz's staff."""
+	from frappe.utils.xlsxutils import make_xlsx
+
+	from lms.lms.permissions import can_administer_assessment
+
+	if not isinstance(quiz, str) or not can_administer_assessment("LMS Quiz", quiz):
+		frappe.throw(_("You cannot see the answers to this quiz."), frappe.PermissionError)
+
+	rows = [[_("Question"), _("Answer"), _("Count"), _("Share of responses (%)")]]
+	for question in quiz_summary(quiz):
+		responses = question["responses"]
+		for answer in question["answers"] or [{"answer": "", "count": 0}]:
+			share = round(answer["count"] * 100 / responses, 1) if responses else 0
+			rows.append([question["question_detail"], answer["answer"], answer["count"], share])
+
+	title = frappe.db.get_value("LMS Quiz", quiz, "title")
+	frappe.response["filename"] = f"{frappe.scrub(title) or quiz}-results.xlsx"
+	frappe.response["filecontent"] = make_xlsx(rows, _("Results")[:31]).getvalue()
+	frappe.response["type"] = "binary"
 
 
 def _attempt_size(quiz_details: dict) -> int:

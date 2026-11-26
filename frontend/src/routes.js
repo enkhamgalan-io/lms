@@ -254,6 +254,13 @@ export const routes = [
 		props: true,
 	},
 	{
+		// A static prefix, as edit/ above, so no quiz name can shadow it.
+		path: '/quizzes/results/:quizID',
+		name: 'QuizResults',
+		component: () => import('@/pages/QuizResults.vue'),
+		props: true,
+	},
+	{
 		path: '/calendar',
 		name: 'Calendar',
 		component: () => import('@/pages/Calendar.vue'),
