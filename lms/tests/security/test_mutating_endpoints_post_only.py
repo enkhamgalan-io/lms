@@ -42,6 +42,7 @@ READ_ONLY_ENDPOINTS = (
 	"lms.lms.api.get_job_details",
 	"lms.lms.api.get_job_opportunities",
 	"lms.lms.api.get_job_opportunities_count",
+	"lms.lms.api.get_learning_history",
 	"lms.lms.api.get_lesson_completion_stats",
 	"lms.lms.api.get_live_class_start_url",
 	"lms.lms.api.get_lms_settings",
