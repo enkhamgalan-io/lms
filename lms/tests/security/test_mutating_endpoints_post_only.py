@@ -103,6 +103,7 @@ READ_ONLY_ENDPOINTS = (
 	"lms.lms.doctype.lms_question.lms_question.serve_question_resource",
 	# Grades one answer, stores nothing.
 	"lms.lms.doctype.lms_quiz.lms_quiz.check_answer",
+	"lms.lms.doctype.lms_quiz.lms_quiz.download_quiz_summary",
 	"lms.lms.doctype.lms_quiz.lms_quiz.get_question_bank",
 	"lms.lms.doctype.lms_quiz.lms_quiz.get_question_meta",
 	"lms.lms.doctype.lms_quiz.lms_quiz.get_quiz_violation_logs",

@@ -30,6 +30,18 @@
 						@click="goToSubmissions"
 					/>
 					<HeaderButton
+						v-if="['Survey', 'Poll'].includes(quizDetails.doc?.quiz_type)"
+						variant="subtle"
+						icon="lucide-chart-bar"
+						:label="__('Results')"
+						@click="
+							router.push({
+								name: 'QuizResults',
+								params: { quizID: quizDetails.doc.name },
+							})
+						"
+					/>
+					<HeaderButton
 						v-if="!locked"
 						variant="subtle"
 						theme="red"
