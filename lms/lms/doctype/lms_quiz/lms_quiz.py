@@ -65,6 +65,8 @@ ALLOWED_DATAURL_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".
 
 VIOLATION_EVENT_TYPES = {"tab_switch", "no_face", "multiple_faces", "focus_loss", "camera_disconnect"}
 SUBMISSION_REASONS = {"manual", "timer_expired", "max_violations", "browser_closed", "left_page"}
+# Set only by remove_from_quiz, never taken from the client.
+REMOVED_BY_STAFF = "removed_by_admin"
 # One attempt cannot plausibly produce more proctoring events than this; the rest is a flood.
 MAX_VIOLATION_EVENTS = 500
 # Proctoring frames are ~320px JPEGs, so a frame past this is not a frame. Held as a
@@ -285,6 +287,41 @@ def option_order(quiz: str, member: str, question: str) -> list[int]:
 
 def _session_key(quiz: str, member: str) -> str:
 	return f"lms:quiz_session:{quiz}:{member}"
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_from_quiz(quiz: str, member: str) -> str:
+	"""End `member`'s attempt at `quiz` as removed by staff: a submission with no answers and
+	no marks, which counts as an attempt, and their open screen is closed.
+
+	shortcut: an unshuffled quiz without single_session can still take the stale browser's
+	submit as a further attempt; turn on single_session where removals must be final."""
+	from lms.lms.permissions import can_administer_assessment
+
+	if not isinstance(quiz, str) or not can_administer_assessment("LMS Quiz", quiz):
+		frappe.throw(_("Only this quiz's staff can remove a learner from it."), frappe.PermissionError)
+	if not isinstance(member, str) or not frappe.db.exists("User", member):
+		frappe.throw(_("User {0} does not exist.").format(member), frappe.DoesNotExistError)
+
+	details = frappe.db.get_value("LMS Quiz", quiz, ["total_marks", "passing_percentage"], as_dict=True)
+	submission = frappe.get_doc(
+		{
+			"doctype": "LMS Quiz Submission",
+			"quiz": quiz,
+			"member": member,
+			"result": [],
+			"score": 0,
+			"score_out_of": details.total_marks,
+			"percentage": 0,
+			"passing_percentage": details.passing_percentage,
+			"submission_reason": REMOVED_BY_STAFF,
+		}
+	)
+	# nosemgrep: lms-unjustified-ignore-permissions - staff checked above; the row is the learner's
+	submission.insert(ignore_permissions=True)
+	frappe.cache.delete_value(_session_key(quiz, member))
+	frappe.publish_realtime("quiz_removed", {"quiz": quiz}, user=member, after_commit=True)
+	return submission.name
 
 
 def open_quiz_session(quiz: str, member: str) -> str:
